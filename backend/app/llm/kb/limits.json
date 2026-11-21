@@ -1,0 +1,74 @@
+[
+ {
+  "id": "limits.not_science",
+  "kind": "limits",
+  "topic": "science",
+  "text": "Palmistry is a traditional practice kept here for reflection and entertainment. It is not a science: researchers regard it as a pseudoscience, and books disagree with one another about what the lines mean.",
+  "keywords": ["science", "scientific", "accurate", "accuracy", "true", "real", "reliable", "evidence", "proof", "pseudoscience", "entertainment"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_medical",
+  "kind": "limits",
+  "topic": "medical",
+  "text": "A palm reading cannot say anything about health, illness or medical conditions, and it should never replace a doctor.",
+  "keywords": ["health", "medical", "doctor", "illness", "diagnosis", "disease"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.lifespan",
+  "kind": "limits",
+  "topic": "lifespan",
+  "text": "The life line is not a measure of how long anyone will live. That is a common myth; here it is read only as a theme of energy and vitality.",
+  "keywords": ["lifespan", "how long", "live", "life line", "myth", "death"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_financial",
+  "kind": "limits",
+  "topic": "financial",
+  "text": "A palm reading is not financial guidance. It cannot say anything about money, investments or what will happen with money.",
+  "keywords": ["money", "financial", "invest", "investment", "income", "wealth"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_career",
+  "kind": "limits",
+  "topic": "employment",
+  "text": "A palm reading is not career advice and should not be used to make decisions about work. It speaks only in general traditional themes such as temperament.",
+  "keywords": ["career", "job", "work", "employment", "advice", "decision"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_relationship",
+  "kind": "limits",
+  "topic": "relationship",
+  "text": "A palm reading is not relationship advice and cannot say what will happen with another person. The heart line is read only as a theme of emotional style.",
+  "keywords": ["relationship", "love", "marriage", "partner", "advice"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.no_prediction",
+  "kind": "limits",
+  "topic": "prediction",
+  "text": "No line says what will happen to anyone. Palmistry here describes themes to reflect on and never predicts events, dates or outcomes.",
+  "keywords": ["predict", "prediction", "future", "forecast", "fortune", "will happen"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.missing_line",
+  "kind": "limits",
+  "topic": "missing",
+  "text": "Many hands have no distinct fate line or sun line. A line that was not seen is not described at all, and nothing is read into its absence. A line marked uncertain was only faintly or partly seen, so only a loose idea of its theme is given.",
+  "keywords": ["missing", "not visible", "uncertain", "absent", "unclear", "not seen", "faint"],
+  "basis": ["S1"]
+ },
+ {
+  "id": "limits.photo",
+  "kind": "limits",
+  "topic": "photo",
+  "text": "Lines in a photo can be missed or misread, which is why each one is marked detected, uncertain or not visible. A clearer photo, in even daylight with the palm flat and in focus, usually helps.",
+  "keywords": ["photo", "picture", "image", "lighting", "blurry", "retake", "better", "focus"],
+  "basis": []
+ }
+]

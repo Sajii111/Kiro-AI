@@ -1,0 +1,34 @@
+[
+ {
+  "id": "compare.general",
+  "kind": "compare",
+  "case": "general",
+  "text": "In traditional palmistry the two hands are read together: one hand, often the non-dominant one, is read as what a person starts with, and the other, often the dominant one, as how life has shaped them. Books disagree about which hand is which, and this reading does not know which of your hands is dominant, so it only describes how the two differ.",
+  "keywords": ["left hand", "right hand", "compare", "comparison", "difference", "differences", "both hands", "dominant", "non-dominant", "inherited", "developed"],
+  "basis": ["S1", "S2"]
+ },
+ {
+  "id": "compare.same",
+  "kind": "compare",
+  "case": "same",
+  "text": "Traditionally, hands that match are read as consistency between what you start with and how life has shaped you.",
+  "keywords": ["same", "similar", "match", "consistent", "both hands", "left", "right"],
+  "basis": ["S1"]
+ },
+ {
+  "id": "compare.differ",
+  "kind": "compare",
+  "case": "differ",
+  "text": "Traditionally, a difference between the hands is read as change between what you start with and how life has shaped you.",
+  "keywords": ["different", "difference", "differ", "change", "both hands", "left", "right"],
+  "basis": ["S1"]
+ },
+ {
+  "id": "compare.one",
+  "kind": "compare",
+  "case": "one",
+  "text": "When only one hand shows a line clearly, the tradition of comparing the two hands cannot be applied to that line, so the two hands are not compared on it.",
+  "keywords": ["one hand", "only", "not compared", "left", "right"],
+  "basis": ["S1"]
+ }
+]

@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  },
+  "overrides": [
+    {
+      // Three.js objects are meant to be changed inside useFrame/useMemo; the "no mutation" rule is for plain React state.
+      "files": ["src/landing/scene/**"],
+      "rules": { "react/immutability": "off" }
+    }
+  ]
+}
