@@ -1,0 +1,35 @@
+# What does NOT go into the build. The Dockerfile copies only the folders it names, so this is a second lock on the door:
+# nothing private or heavy can reach an image even if a COPY line changes.
+
+# version control and editors
+.git
+.vscode
+.idea
+
+# installed packages: the image installs its own
+**/node_modules
+backend/.venv
+
+# built output: the image builds the website itself
+dist
+dist-server
+
+# secrets, never in an image
+**/.env
+**/.env.*
+backend/secrets
+
+# the volunteers' photos and everything written about them
+test-photos
+debug
+evidence
+submission
+*.zip
+
+# not needed to run
+backend/tests
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/*.log
