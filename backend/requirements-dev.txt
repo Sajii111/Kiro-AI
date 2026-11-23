@@ -1,9 +1,0 @@
-# What is needed to run the tests and the code checker. Not needed to run the server.
-#   backend\.venv\Scripts\python -m pip install -r backend\requirements-dev.txt
-#   cd backend && .venv\Scripts\python -m pytest
-
--r requirements.txt
-
-pytest==9.2.0
-httpx==0.28.1  # the test client talks to the app through it
-ruff==0.17.4  # the code checker: ruff check app tests
