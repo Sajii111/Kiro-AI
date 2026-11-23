@@ -1,0 +1,74 @@
+[
+ {
+  "id": "limits.not_science",
+  "kind": "limits",
+  "topic": "science",
+  "text": "Palmistry is an old art, not a science. Scientists call it a pseudoscience, and the old books disagree about what the lines mean, so a reading is a story to enjoy and think about, never a promise.",
+  "keywords": ["science", "scientific", "accurate", "accuracy", "true", "real", "reliable", "evidence", "proof", "pseudoscience", "entertainment"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_medical",
+  "kind": "limits",
+  "topic": "medical",
+  "text": "A palm reading cannot say anything about health, illness or medical conditions, and it never replaces a doctor.",
+  "keywords": ["health", "medical", "doctor", "illness", "diagnosis", "disease"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.lifespan",
+  "kind": "limits",
+  "topic": "lifespan",
+  "text": "The life line is not a clock: it says nothing about how long anyone will live. Read it as a line of energy.",
+  "keywords": ["lifespan", "how long", "live", "life line", "myth", "death"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_financial",
+  "kind": "limits",
+  "topic": "financial",
+  "text": "A palm reading is not financial advice. It can say you will do well in general, but it cannot name investments or amounts, or say what to do with money.",
+  "keywords": ["money", "financial", "invest", "investment", "income", "wealth"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_career",
+  "kind": "limits",
+  "topic": "employment",
+  "text": "A palm reading will not make your career decisions for you. It speaks of the direction and recognition your lines promise, but it cannot say which job to take or whether to leave one.",
+  "keywords": ["career", "job", "work", "employment", "advice", "decision"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.not_relationship",
+  "kind": "limits",
+  "topic": "relationship",
+  "text": "A palm reading will not tell you what to do about another person, and it cannot read anyone’s heart but yours. It speaks of the love that your own heart line promises.",
+  "keywords": ["relationship", "love", "marriage", "partner", "advice"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.no_prediction",
+  "kind": "limits",
+  "topic": "prediction",
+  "text": "Your reader says what the lines promise, such as love, recognition, travel and change, in loose terms like “soon” and “in time”, never in dates. The palm names no days, ages or amounts, and it foretells no illness, no loss and no endings.",
+  "keywords": ["predict", "prediction", "future", "forecast", "fortune", "will happen", "foretell", "will i", "destiny", "what will happen"],
+  "basis": ["S4"]
+ },
+ {
+  "id": "limits.missing_line",
+  "kind": "limits",
+  "topic": "missing",
+  "text": "Many hands have no clear fate line or sun line. A line that was not seen is not read at all, and nothing is read into its absence. A line marked uncertain was only partly seen, so the reading gives only a rough hint about it.",
+  "keywords": ["missing", "not visible", "uncertain", "absent", "unclear", "not seen", "faint"],
+  "basis": ["S1"]
+ },
+ {
+  "id": "limits.photo",
+  "kind": "limits",
+  "topic": "photo",
+  "text": "Lines in a photo can be missed or misread, which is why each one is marked detected, uncertain or not visible. A clearer photo, in even daylight with the palm flat and in focus, usually helps.",
+  "keywords": ["photo", "picture", "image", "lighting", "blurry", "retake", "better", "focus"],
+  "basis": []
+ }
+]

@@ -1,0 +1,402 @@
+@import "tailwindcss";
+
+/* Lets Tailwind's dark: variant follow our data-theme switch instead of the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Colours point at the CSS variables below, so one switch re-themes everything. */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent2);
+  --color-soft: var(--soft);
+  /* deeper accent for small text, so it stays readable on the paper colour */
+  --color-accent-ink: var(--accent-ink);
+  /* keyboard focus: dark enough on the paper colour to be seen (3:1 or better) */
+  --color-focus: var(--focus);
+  /* text colour that sits on top of the accent colour */
+  --color-on-accent: var(--on-accent);
+  /* feature status colours: detected / uncertain / not visible */
+  --color-detected: var(--detected);
+  --color-uncertain: var(--uncertain);
+  /* destructive actions and error text */
+  --color-danger: var(--danger);
+}
+
+/* Fonts are plain values (self-hosted through Fontsource, see main.tsx). */
+@theme {
+  --font-display: "Fraunces Variable", Georgia, serif;
+  --font-body: "DM Sans Variable", system-ui, sans-serif;
+}
+
+/*
+ * Night Sky (dark) is the default theme: a deep midnight sky with violet nebula light and star-gold.
+ * Golden Hour (light) is the same sky at dawn: warm cream and peach with lavender at the top, and deep indigo ink.
+ * The --sky-* values paint the cosmos behind every page (see .cosmos below).
+ */
+:root,
+[data-theme="dark"] {
+  --paper: #080B1C;
+  --surface: #121734;
+  --ink: #EEF0FF;
+  --muted: #A8B0D8;
+  --accent: #9F8CFF;
+  --accent2: #FFD27A;
+  --soft: #5FD0C4;
+  /* lighter violet for small text on the dark sky (9:1 or better) */
+  --accent-ink: #C4B8FF;
+  --focus: #C4B8FF;
+  --on-accent: #080B1C;
+  --detected: #7EE0A4;
+  --uncertain: #FFD27A;
+  --danger: #FF9D94;
+  /* the sky */
+  --sky-top: #0B1033;
+  --sky-glow-a: #3B2A8F;
+  --sky-glow-b: #0F5A6E;
+  --sky-glow-c: #6A2C7A;
+  --star: #FFFFFF;
+  --star-warm: #FFE3A8;
+  /* the little star in the wordmark */
+  --logo-star: #FFE3A8;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --paper: #FFF4E8;
+  --surface: #FFFAF3;
+  --ink: #241B3F;
+  --muted: #62587D;
+  --accent: #FFB287;
+  --accent2: #FFD166;
+  --soft: #B7A8F5;
+  /* deep enough for small text on the paper colour and on its own tints (5:1 or better) */
+  --accent-ink: #964214;
+  /* the peach accent is too pale to mark focus (1.6:1 on paper), so focus uses the deeper tone */
+  --focus: #A24818;
+  --on-accent: #241B3F;
+  --detected: #3F8A5B;
+  /* amber lines have to stand out from the hand under them: 3:1 or better against paper and cards */
+  --uncertain: #B07800;
+  --danger: #B3362C;
+  /* the sky at dawn */
+  --sky-top: #E9DEFF;
+  --sky-glow-a: #FFC9A8;
+  --sky-glow-b: #FFE29A;
+  --sky-glow-c: #F8B8D0;
+  --star: #E58A2B;
+  --star-warm: #F2A63C;
+  --logo-star: #E0731A;
+  color-scheme: light;
+}
+
+html {
+  font-optical-sizing: auto;
+  -webkit-text-size-adjust: 100%;
+  /* keeps the layout still when the intro gate locks and unlocks scrolling */
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* A component that draws its own focus indicator (a ring on its wrapper, say) opts out of the default outline. */
+.focus-own:focus,
+.focus-own:focus-visible {
+  outline: none;
+}
+
+/* Lenis */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* Custom cursor (only enabled by JS on mouse devices) */
+.cursor-dot, .cursor-ring {
+  position: fixed; top: 0; left: 0; z-index: 9999;
+  pointer-events: none; opacity: 0; border-radius: 9999px;
+}
+.cursor-dot { width: 8px; height: 8px; background: var(--ink); }
+.cursor-ring {
+  width: 38px; height: 38px; border: 1.5px solid var(--ink);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+.cursor-ring.is-hover {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  border-color: var(--accent);
+}
+html.has-cursor, html.has-cursor * { cursor: none !important; }
+/* Typing fields keep the normal text caret so they stay easy to use. */
+html.has-cursor input, html.has-cursor textarea, html.has-cursor [contenteditable="true"] { cursor: text !important; }
+
+/* A small word that rides along with the cursor ("Drag") */
+.cursor-label {
+  position: fixed; top: 0; left: 0; z-index: 10000;
+  pointer-events: none; opacity: 0;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink); white-space: nowrap;
+}
+
+/* The little label next to the pointer while it is over something in the 3D scene (components: landing/scene/SceneTip.tsx) */
+.scene-tip {
+  position: fixed; top: 0; left: 0; z-index: 9995;
+  pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  width: max-content; max-width: 80vw;
+  padding: 0.4rem 0.85rem; border-radius: 9999px;
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 8px 28px -10px color-mix(in srgb, var(--accent) 70%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink); white-space: nowrap; will-change: transform;
+}
+/* The pointer is over something in the 3D scene that can be dragged, and while it is being dragged */
+html.scene-over { cursor: grab; }
+
+/* The 3D scene is drawn only above the end of the landing page's "world" (Landing sets --scene-end, the distance from
+   the top of the window down to that edge). It fades into the plain sky there, so nothing of it shows behind the
+   privacy, FAQ and footer panels, and no frozen frame is left behind once the scene stops drawing. The mask only
+   exists while that edge is on or near the screen (Landing toggles html.scene-fading), so the rest of the time the
+   canvas is drawn without one. */
+html.scene-fading .scene-layer {
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--scene-end, 9999px) - 14rem), transparent var(--scene-end, 9999px));
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(var(--scene-end, 9999px) - 14rem), transparent var(--scene-end, 9999px));
+}
+html.scene-grab, html.scene-grab * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+
+/* The four-point star used as a small ornament (a mask, so it takes the text colour and is invisible to screen readers) */
+:root {
+  --spark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z'/%3E%3C/svg%3E");
+}
+
+/* Buttons and small labels used across the landing page and the app */
+@layer components {
+  .kicker {
+    display: inline-flex; align-items: center; gap: 0.65em;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--accent-ink);
+  }
+  .kicker::before {
+    content: ''; flex: none; width: 0.85em; height: 0.85em; background: currentColor;
+    -webkit-mask: var(--spark) center / contain no-repeat; mask: var(--spark) center / contain no-repeat;
+  }
+  .btn {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    border-radius: 9999px; padding: 0.85rem 1.5rem;
+    font-size: 0.9rem; font-weight: 500; line-height: 1; white-space: nowrap;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s, opacity 0.3s, box-shadow 0.3s;
+  }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
+  /* a button that is not ready yet but still answers a click by saying what is missing */
+  .btn[data-explain="true"] { pointer-events: auto; cursor: not-allowed; }
+  .btn-primary[data-explain="true"]:hover { background: var(--ink); color: var(--paper); box-shadow: none; }
+  .btn-primary[data-explain="true"]:hover::after { opacity: 0; }
+  .btn-primary {
+    background: var(--ink); color: var(--paper);
+    box-shadow: 0 10px 28px -16px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .btn-primary:hover {
+    background: var(--accent); color: var(--on-accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 12px 38px -10px color-mix(in srgb, var(--accent) 85%, transparent);
+  }
+  /* a little star that twinkles into the corner of a primary button when it is hovered */
+  .btn-primary::after {
+    content: ''; position: absolute; right: 0.7rem; top: 0.28rem; width: 0.55rem; height: 0.55rem;
+    background: var(--accent2); pointer-events: none;
+    -webkit-mask: var(--spark) center / contain no-repeat; mask: var(--spark) center / contain no-repeat;
+    opacity: 0; transform: scale(0.2) rotate(-40deg);
+    transition: opacity 0.3s, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1.4);
+  }
+  .btn-primary:hover::after { opacity: 1; transform: scale(1) rotate(0deg); }
+  .btn-ghost {
+    border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent);
+    background: color-mix(in srgb, var(--surface) 74%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .btn-ghost:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+  .btn-danger { background: var(--danger); color: var(--paper); }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 82%, var(--ink)); }
+  .btn-sm { padding: 0.6rem 1rem; font-size: 0.8rem; }
+  /* a card that holds content in the app screens: slightly see-through, so the sky shows faintly behind it */
+  .card {
+    border-radius: 1.5rem; border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+  }
+}
+
+/*
+ * Landing page only. The header floats over a moving 3D scene while the page scrolls beneath it, so it gets a
+ * frosted band that fades out below itself: text scrolling underneath never meets the logo or the links.
+ */
+.header-band { isolation: isolate; }
+.header-band::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  inset: 0 0 -1.5rem 0;
+  /* tinted with the top of the sky (not the page colour), so the band melts into the sky instead of reading as a bar */
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--sky-top) 86%, transparent), color-mix(in srgb, var(--sky-top) 70%, transparent) 62%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent);
+  mask-image: linear-gradient(to bottom, #000 58%, transparent);
+}
+
+/*
+ * The cosmos: a fixed sky behind every page (see components/Cosmos.tsx). The gradients are here, the stars are
+ * drawn on a canvas on top of them. It sits at z-index -1, so all content paints in front of it.
+ */
+.cosmos { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.cosmos-sky {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(60rem 40rem at 10% -10%, color-mix(in srgb, var(--sky-glow-a) 55%, transparent), transparent 70%),
+    radial-gradient(52rem 36rem at 94% 4%, color-mix(in srgb, var(--sky-glow-c) 40%, transparent), transparent 70%),
+    radial-gradient(80rem 34rem at 55% 114%, color-mix(in srgb, var(--sky-glow-b) 46%, transparent), transparent 72%),
+    linear-gradient(to bottom, var(--sky-top), var(--paper) 64%);
+}
+/* two slow clouds of nebula light drifting behind the stars */
+.cosmos-sky::before, .cosmos-sky::after {
+  content: ''; position: absolute; border-radius: 9999px; filter: blur(60px); opacity: 0.5; will-change: transform;
+}
+.cosmos-sky::before {
+  width: 38rem; height: 24rem; left: -8rem; top: 24%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--sky-glow-c) 55%, transparent), transparent);
+  animation: nebula-a 90s ease-in-out infinite alternate;
+}
+.cosmos-sky::after {
+  width: 34rem; height: 22rem; right: -6rem; top: 52%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--sky-glow-b) 50%, transparent), transparent);
+  animation: nebula-b 110s ease-in-out infinite alternate;
+}
+@keyframes nebula-a { to { transform: translate3d(14rem, -6rem, 0) scale(1.25); } }
+@keyframes nebula-b { to { transform: translate3d(-16rem, 5rem, 0) scale(1.2); } }
+.cosmos canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* The sparkles that follow the mouse (components/SparkleTrail.tsx) */
+.sparkle-layer { position: fixed; inset: 0; z-index: 9990; pointer-events: none; width: 100%; height: 100%; }
+
+/* The logo's little star: it breathes slowly */
+@keyframes logo-twinkle { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; } 50% { transform: scale(0.72) rotate(45deg); opacity: 0.6; } }
+.logo-star { color: var(--logo-star); animation: logo-twinkle 4.6s ease-in-out infinite; transform-origin: center; }
+a:hover > .logo-star, a:focus-visible > .logo-star { animation-duration: 1.4s; }
+
+/* The app screens sit straight on the cosmos */
+.app-bg { background: transparent; }
+
+/* A page easing in when the route changes */
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.page-in { animation: page-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+/* ...but not while the page-switch veil still covers it: the entrance starts as the veil lifts (components/RouteStage.tsx) */
+html[data-veil='in'] .page-in, html[data-veil='hold'] .page-in { animation-play-state: paused; }
+
+/*
+ * The page-switch veil (components/RouteStage.tsx). It is the colour of the sky with a soft glow in the middle and a small
+ * star on it. data-state: idle (not there) -> in (fades in over the old page) -> hold (closed, the next page is swapped in
+ * underneath) -> out (lifts). It sits above the page but below the cursor and the sparkles.
+ */
+.veil {
+  position: fixed; inset: 0; z-index: 9000; display: grid; place-items: center;
+  visibility: hidden; opacity: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60% 55% at 50% 46%, color-mix(in srgb, var(--accent) 20%, var(--paper)), var(--paper) 72%);
+}
+.veil[data-state='in'] { visibility: visible; opacity: 1; pointer-events: auto; transition: opacity 0.23s cubic-bezier(0.3, 0, 0.4, 1); }
+.veil[data-state='hold'] { visibility: visible; opacity: 1; pointer-events: auto; }
+.veil[data-state='out'] { visibility: visible; opacity: 0; transition: opacity 0.42s cubic-bezier(0.3, 0, 0.3, 1); }
+.veil .veil-mark { opacity: 0; transform: scale(0.7); transition: opacity 0.25s ease 0.08s, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.08s; }
+.veil[data-state='in'] .veil-mark, .veil[data-state='hold'] .veil-mark { opacity: 1; transform: none; }
+.veil[data-state='out'] .veil-mark { opacity: 0; transform: scale(1.12); transition: opacity 0.25s ease, transform 0.42s ease; }
+
+/* The little mark: a star with three tiny stars circling it (only the stars move, no ring is drawn) */
+.veil-mark { position: relative; display: inline-block; color: var(--accent-ink); }
+.veil-star { position: absolute; left: 31%; top: 31%; width: 38%; height: 38%; filter: drop-shadow(0 0 7px currentColor); animation: veil-pulse 1.6s ease-in-out infinite; }
+@keyframes veil-pulse { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; } 50% { transform: scale(0.7) rotate(45deg); opacity: 0.65; } }
+.veil-orbit { position: absolute; inset: 0; animation: veil-spin 1.5s linear infinite; }
+.veil-orbit i { position: absolute; left: 50%; top: 0; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 9999px; background: currentColor; box-shadow: 0 0 9px currentColor; }
+.veil-orbit-b { inset: 13%; animation-duration: 2.4s; animation-direction: reverse; }
+.veil-orbit-b i { width: 4px; height: 4px; margin-left: -2px; opacity: 0.85; }
+.veil-orbit-c { inset: -11%; animation-duration: 3.6s; }
+.veil-orbit-c i { width: 3px; height: 3px; margin-left: -1.5px; opacity: 0.8; background: var(--star-warm); box-shadow: 0 0 8px var(--star-warm); }
+@keyframes veil-spin { to { transform: rotate(360deg); } }
+
+/*
+ * The intro's Skip button (components/IntroGate.tsx): small and quiet, low in the middle of the window. It is the sky's own
+ * muted colour with no frame until it is hovered or focused, so it blends into the loader. The hit area is still a full
+ * 44px tall. It fades in a moment after the loader appears (the fade only covers the start: the gate takes over the
+ * opacity afterwards to let it go as the page opens).
+ */
+.skip-button {
+  position: fixed; z-index: 102; left: 50%; bottom: max(1.5rem, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 44px; padding: 0 1.15rem;
+  border: 1px solid transparent; border-radius: 9999px; background: transparent;
+  font: inherit; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; text-indent: 0.22em;
+  color: var(--muted); cursor: pointer; white-space: nowrap;
+  transition: color 0.25s, background-color 0.25s, border-color 0.25s;
+  animation: skip-in 0.9s ease 1.1s backwards;
+}
+.skip-button svg { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.skip-button:hover, .skip-button:focus-visible {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 24%, transparent);
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
+}
+.skip-button:hover svg, .skip-button:focus-visible svg { transform: translateX(3px); }
+@keyframes skip-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .skip-button { animation: none; } .skip-button svg { transition: none; } }
+
+/* The landing page's headline, header and so on wait out of sight until the intro lifts (pages/Landing.tsx) */
+.intro-hold .header-band, .intro-hold .hero-panel, .intro-hold .hero-kicker, .intro-hold .hero-title, .intro-hold .hero-sub,
+.intro-hold .hero-cta, .intro-hold .hero-fine, .intro-hold .scroll-badge { opacity: 0; }
+
+/* A soft band of light sweeping down a photo while it is being read */
+@keyframes scan-sweep { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+.scan::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--accent) 38%, transparent) 50%, transparent 58%);
+  animation: scan-sweep 2.4s ease-in-out infinite;
+}
+
+/* Sound bars + marquee */
+@keyframes eq { 0%, 100% { height: 4px; } 50% { height: 18px; } }
+.eq-bar { animation: eq 0.9s ease-in-out infinite; }
+/* the sound button while the music waits for the first click, key press or tap: it breathes softly */
+@keyframes eq-wait { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.eq-wait { animation: eq-wait 2.4s ease-in-out infinite; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee { animation: marquee 35s linear infinite; }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spin-slow 16s linear infinite; }
+
+/*
+ * Switching theme: the new theme grows as a circle out of the pressed button (lib/themeTransition.ts drives the
+ * circle). The browser's own cross-fade is turned off so only the circle is seen. Browsers without View Transitions
+ * get the plain colour fade below instead.
+ */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+html.theme-switching, html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after { transition: none !important; }
+html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *::after {
+  transition: background-color 0.65s ease, color 0.65s ease, border-color 0.65s ease, fill 0.65s ease, stroke 0.65s ease, box-shadow 0.65s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar, .eq-wait, .marquee, .spin-slow, .page-in, .scan::after, .logo-star, .cosmos-sky::before, .cosmos-sky::after { animation: none; }
+  /* the star still shows while the next page is fetched, but it holds still and the veil does not fade */
+  .veil-star, .veil-orbit { animation: none; }
+  .veil, .veil .veil-mark { transition: none !important; }
+}

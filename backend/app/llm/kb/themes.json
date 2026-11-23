@@ -1,0 +1,165 @@
+[
+  {
+    "id": "theme.personality",
+    "kind": "theme",
+    "theme": "personality",
+    "title": "Your personality",
+    "intro": "Your personality is read from the shape of your hand together with your head, heart and life lines: how you think, how you feel and how you use your energy.",
+    "reads": [
+      "shape",
+      "head",
+      "heart",
+      "life"
+    ],
+    "outro": "This is the personality that carries you through everything that comes. You can count on it.",
+    "text": "Your personality is read from the shape of your hand together with your head, heart and life lines: how you think, how you feel and how you use your energy. It is what carries you through everything that comes.",
+    "keywords": [
+      "personality",
+      "character",
+      "temperament",
+      "traits",
+      "nature",
+      "who am i",
+      "what am i like"
+    ],
+    "basis": [
+      "S1",
+      "S3"
+    ],
+    "roles": {
+      "shape": "what kind of person you are",
+      "head": "how you think",
+      "heart": "how you feel",
+      "life": "how you use your energy"
+    }
+  },
+  {
+    "id": "theme.career",
+    "kind": "theme",
+    "theme": "career",
+    "title": "Work and career",
+    "intro": "Your work life is read from your fate line (your sense of direction), your sun line (what brings you recognition) and your head line (how you work).",
+    "reads": [
+      "fate",
+      "sun",
+      "head"
+    ],
+    "outro": "Your lines say that doors will open for you in the work you care about.",
+    "text": "Your work life is read from your fate line (your sense of direction), your sun line (what brings you recognition) and your head line (how you work). It speaks of the direction and recognition your lines promise, not of which job to take.",
+    "keywords": [
+      "career",
+      "work",
+      "job",
+      "profession",
+      "professional",
+      "vocation",
+      "occupation",
+      "business"
+    ],
+    "basis": [
+      "S1"
+    ],
+    "roles": {
+      "fate": "your sense of direction",
+      "sun": "what brings you recognition",
+      "head": "how you work"
+    }
+  },
+  {
+    "id": "theme.financial",
+    "kind": "theme",
+    "theme": "financial",
+    "title": "Money and success",
+    "intro": "Money and success are not read from a single mark. They are read from your sun line (what brings you rewards), your head line (your practical sense) and your fate line (how steady your path is).",
+    "reads": [
+      "sun",
+      "head",
+      "fate"
+    ],
+    "outro": "Good things come to people who use their talents well, and your palm says that you are one of them.",
+    "text": "Money and success are not read from a single mark. They are read from your sun line (what brings you rewards), your head line (your practical sense) and your fate line (how steady your path is). It speaks of doing well as a theme of your life, and it cannot name amounts or investments.",
+    "keywords": [
+      "financial",
+      "finances",
+      "money",
+      "prosperity",
+      "wealth",
+      "income",
+      "abundance",
+      "prospects"
+    ],
+    "basis": [
+      "S1"
+    ],
+    "roles": {
+      "sun": "what brings you rewards",
+      "head": "your practical sense",
+      "fate": "how steady your path is"
+    }
+  },
+  {
+    "id": "theme.relationships",
+    "kind": "theme",
+    "theme": "relationships",
+    "title": "Love and relationships",
+    "intro": "Love is read mainly from your heart line, with your head line (how you put feelings into words) and your life line (how much warmth you carry).",
+    "reads": [
+      "heart",
+      "head",
+      "life"
+    ],
+    "outro": "Your lines promise love that is real and lasting, to anyone who keeps their heart open.",
+    "text": "Love is read mainly from your heart line, with your head line (how you put feelings into words) and your life line (how much warmth you carry). It speaks of the love that your own lines promise, and it cannot read another person’s heart.",
+    "keywords": [
+      "relationships",
+      "emotional life",
+      "love",
+      "romance",
+      "feelings",
+      "partner",
+      "family",
+      "friendships",
+      "emotions"
+    ],
+    "basis": [
+      "S1"
+    ],
+    "roles": {
+      "heart": "how you love",
+      "head": "how you put feelings into words",
+      "life": "how much warmth you carry"
+    }
+  },
+  {
+    "id": "theme.future",
+    "kind": "theme",
+    "theme": "future",
+    "title": "What lies ahead",
+    "intro": "What lies ahead is read from your fate line (your direction), your sun line (how satisfied you will feel) and your life line (your energy).",
+    "reads": [
+      "fate",
+      "sun",
+      "life"
+    ],
+    "outro": "The road ahead is bright for people who walk it with an open heart. A palm shows the shape of the road, not every step: the steps are yours.",
+    "text": "What lies ahead is read from your fate line (your direction), your sun line (how satisfied you will feel) and your life line (your energy). The lines show the general shape of your future in loose terms like “soon” and “in time”, never in exact dates.",
+    "keywords": [
+      "future",
+      "outlook",
+      "direction",
+      "what will happen",
+      "destiny",
+      "prospects",
+      "narrative"
+    ],
+    "basis": [
+      "S1",
+      "S4"
+    ],
+    "roles": {
+      "fate": "your direction",
+      "sun": "how satisfied you will feel",
+      "life": "your energy"
+    }
+  }
+]

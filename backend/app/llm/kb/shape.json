@@ -1,0 +1,61 @@
+[
+ {
+  "id": "shape.general",
+  "kind": "shape",
+  "element": null,
+  "named": null,
+  "shape": null,
+  "temperament": null,
+  "text": "Palmistry sorts hands into four types named after the elements: earth, air, water and fire. The type depends on how broad your palm is and how long your fingers are. Books differ on the details, so take your type as a rough picture of your personality.",
+  "keywords": ["hand shape", "palm shape", "hand type", "four elements", "elements", "fingers", "palm"],
+  "basis": ["S3", "S4"]
+ },
+ {
+  "id": "shape.earth",
+  "kind": "shape",
+  "element": "earth",
+  "named": "an earth hand",
+  "shape": "a square palm with shorter fingers",
+  "temperament": "a practical, steady, hands-on nature",
+  "text": "A square palm with shorter fingers makes an earth hand. You have a practical, steady, hands-on nature, and what you build with patience will last.",
+  "keywords": ["earth hand", "earth", "square palm", "short fingers", "practical", "steady"],
+  "basis": ["S3"],
+  "fortune": "what you build with patience will last"
+ },
+ {
+  "id": "shape.air",
+  "kind": "shape",
+  "element": "air",
+  "named": "an air hand",
+  "shape": "a square palm with longer fingers",
+  "temperament": "a curious, quick mind and a way with words",
+  "text": "A square palm with longer fingers makes an air hand. You have a curious, quick mind and a way with words, and conversations and new ideas will open doors for you.",
+  "keywords": ["air hand", "air", "square palm", "long fingers", "curious", "analytical", "communicative"],
+  "basis": ["S2", "S3"],
+  "fortune": "conversations and new ideas will open doors for you"
+ },
+ {
+  "id": "shape.water",
+  "kind": "shape",
+  "element": "water",
+  "named": "a water hand",
+  "shape": "a long palm with longer fingers",
+  "temperament": "a sensitive, thoughtful heart with good gut feelings",
+  "text": "A long palm with longer fingers makes a water hand. You have a sensitive, thoughtful heart with good gut feelings, and you will notice what other people miss.",
+  "keywords": ["water hand", "water", "long palm", "long fingers", "sensitive", "intuitive", "reflective"],
+  "basis": ["S2", "S3"],
+  "fortune": "you will notice what other people miss"
+ },
+ {
+  "id": "shape.fire",
+  "kind": "shape",
+  "element": "fire",
+  "named": "a fire hand",
+  "shape": "a long palm with shorter fingers",
+  "temperament": "an energetic, quick-to-act, enthusiastic nature",
+  "text": "A long palm with shorter fingers makes a fire hand. You have an energetic, quick-to-act, enthusiastic nature, and your boldness will start things that other people only dream of.",
+  "keywords": ["fire hand", "fire", "long palm", "short fingers", "energetic", "spontaneous", "enthusiastic"],
+  "basis": ["S3"],
+  "fortune": "your boldness will start things that other people only dream of"
+ }
+]

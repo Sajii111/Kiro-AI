@@ -1,0 +1,34 @@
+[
+ {
+  "id": "compare.general",
+  "kind": "compare",
+  "case": "general",
+  "text": "The two hands are read together: one shows what you were born with, the other what you have made of it. Books disagree about which hand is which, and this reading cannot tell which of your hands you use most, so it only describes how your two hands differ.",
+  "keywords": ["left hand", "right hand", "compare", "comparison", "difference", "differences", "both hands", "dominant", "non-dominant", "inherited", "developed"],
+  "basis": ["S1", "S2"]
+ },
+ {
+  "id": "compare.same",
+  "kind": "compare",
+  "case": "same",
+  "text": "When the two hands match, what you were born with and what you have made of it agree: you are becoming who you were meant to be.",
+  "keywords": ["same", "similar", "match", "consistent", "both hands", "left", "right"],
+  "basis": ["S1"]
+ },
+ {
+  "id": "compare.differ",
+  "kind": "compare",
+  "case": "differ",
+  "text": "When the two hands differ, you have grown beyond where you started: life has changed you, and that change is part of your story.",
+  "keywords": ["different", "difference", "differ", "change", "both hands", "left", "right"],
+  "basis": ["S1"]
+ },
+ {
+  "id": "compare.one",
+  "kind": "compare",
+  "case": "one",
+  "text": "When only one hand shows a line clearly, there is nothing to compare it with, so the two hands are not compared on it.",
+  "keywords": ["one hand", "only", "not compared", "left", "right"],
+  "basis": ["S1"]
+ }
+]
