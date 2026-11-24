@@ -26,6 +26,7 @@ def never_reach_google(monkeypatch):
     A test that tried anyway fails at the end, even if the app swallowed the error and carried on with the fixed wording."""
     monkeypatch.setenv('GEMINI_API_KEY', '')
     monkeypatch.setenv('STORAGE', 'memory')  # and no test may write to a real database, even with a Firebase key in backend/secrets
+    monkeypatch.delenv('FIREBASE_KEY_JSON', raising=False)  # or in the environment
     attempts: list[int] = []
     try:
         from google import genai

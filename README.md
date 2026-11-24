@@ -194,6 +194,8 @@ If you would rather keep editing screens with instant reload, run `run.bat --no-
 is what you want for a static demo that needs no server, and it writes to a different folder (`dist/`), so the two never get mixed
 up (`dist-server/build-info.json` says which kind a folder holds). How to host the site and the API (and the one
 cookie trap to avoid) is in [section 10 of the contract](docs/API_CONTRACT.md#10-hosting-the-website-and-the-api).
+The [`Dockerfile`](Dockerfile) builds both into one image for a hosting service. It keeps accounts in your Firebase database
+and needs the key in a setting called `FIREBASE_KEY_JSON` on the host (the notes at the top of the Dockerfile list every setting).
 
 Where the sample data lives: a guest session is kept in the tab (`sessionStorage`) and disappears when it closes; a signed-in
 sample account is kept in this browser's `localStorage`. No password is stored in plain text, and no real account is created anywhere.

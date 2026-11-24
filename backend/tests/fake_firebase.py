@@ -76,6 +76,18 @@ def private_key_text() -> str:
 
 def write_key_file(path: Path, project: str = PROJECT, **changes) -> Path:
     """A key file shaped like the one the Firebase console makes. `changes` replaces or (with None) removes fields."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(key_text(project, **changes), encoding='utf-8')
+    return path
+
+
+def key_text(project: str = PROJECT, **changes) -> str:
+    """The text of such a key file, as a person would paste it into the FIREBASE_KEY_JSON setting (laid out over several lines,
+    as the downloaded file is)."""
+    return json.dumps(key_info(project, **changes), indent=2)
+
+
+def key_info(project: str = PROJECT, **changes) -> dict:
     info = {
         'type': 'service_account',
         'project_id': project,
@@ -90,6 +102,4 @@ def write_key_file(path: Path, project: str = PROJECT, **changes) -> Path:
             info.pop(field, None)
         else:
             info[field] = value
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(info), encoding='utf-8')
-    return path
+    return info

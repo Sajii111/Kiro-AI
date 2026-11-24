@@ -5,8 +5,9 @@
 
 What it does, in order:
 
-    1  the key        looks for backend\\secrets\\firebase-service-account.json (or the file FIREBASE_KEY names) and reads the
-                      project's name from it. The private key in it is NEVER printed.
+    1  the key        looks for backend\\secrets\\firebase-service-account.json (or the file FIREBASE_KEY names, or the key's text
+                      in the FIREBASE_KEY_JSON setting, which wins over a file) and reads the project's name from it. The
+                      private key in it is NEVER printed.
     2  the database   signs in to Google as that service account, writes one small test document, reads it back and deletes
                       it again. Nothing about any person is written.
     3  what is saved  counts the accounts already in the database, and says whether the server will keep accounts there
@@ -61,7 +62,7 @@ def open_database(settings):
     """The real connection, signed in with the key. Tests pass their own instead."""
     from app.store.firestore import FirestoreBackend
 
-    return FirestoreBackend.from_key_file(settings.firebase_key, database=settings.firestore_database)
+    return FirestoreBackend.from_key_file(settings.firebase_key, database=settings.firestore_database, text=settings.firebase_key_json)
 
 
 def run(settings=None, make_backend=open_database) -> int:
@@ -70,20 +71,24 @@ def run(settings=None, make_backend=open_database) -> int:
     say('')
     say('[1/3] The key')
     key = settings.firebase_key
-    say(f'     {key} ... {"found" if key.is_file() else "MISSING"}')
-    if not key.is_file():
+    text = settings.firebase_key_json
+    if text.strip():
+        say('     the FIREBASE_KEY_JSON setting ... found (used instead of a key file)')
+    else:
+        say(f'     {key} ... {"found" if key.is_file() else "MISSING"}')
+    if not settings.firebase_key_given:
         say('     Make one in the Firebase console: Project settings > Service accounts > Generate new private key.')
         say(f'     Rename the downloaded file to {key.name} and put it in {key.parent}')
-        say('     (never paste it anywhere or send it to anyone).')
+        say('     (never send it to anyone or put it in the repo; on a hosting service it goes only in the FIREBASE_KEY_JSON setting).')
         say('')
         say('RESULT: FAIL (no key)')
         return 1
     from app.store.firestore import load_credentials
 
     try:
-        info, _ = load_credentials(key)
+        info, _ = load_credentials(key, text)
     except ValueError as error:
-        say(f'     That file cannot be used: {error}.')
+        say(f'     That {"setting" if text.strip() else "file"} cannot be used: {error}.')
         say('     Make a new key in the Firebase console (Project settings > Service accounts > Generate new private key).')
         say('')
         say('RESULT: FAIL (the key file)')

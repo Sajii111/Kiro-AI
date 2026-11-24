@@ -247,6 +247,11 @@ default: the database whenever that file is there), `memory`, or `firestore` (th
 `FIREBASE_KEY` points to the key somewhere else, and `FIRESTORE_DATABASE` names the database if it is not the project's first,
 `(default)`. The server window says which it uses (`Storage: FIRESTORE (Firebase project ...)` or `Storage: MEMORY`), and so does
 `GET /v1/health`. The key is a password to the database: it is never printed, and `run.bat package` refuses to pack it.
+On a hosting service, which has settings rather than files, paste the key file's whole text into the `FIREBASE_KEY_JSON` setting
+instead (or base64 of it, if the settings box keeps only one line); it is used instead of the file. The Docker image
+(`../Dockerfile`) sets `STORAGE=firestore`, so a hosted server never quietly keeps accounts in memory only: without a usable key
+it does not start, and its log says why. Run only one copy of the server (one instance or replica on the host): each copy keeps
+a working copy of the accounts in memory, so two would not see each other's changes.
 
 ## Tests
 

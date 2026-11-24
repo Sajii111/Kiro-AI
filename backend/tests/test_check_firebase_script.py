@@ -46,7 +46,7 @@ def run(check, capsys, key, backend=None, **settings):
 def test_no_key_fails_and_says_how_to_make_one_and_where_it_goes(check, capsys, key):
     code, out = run(check, capsys, key)
     assert code == 1 and result_line(out) == 'RESULT: FAIL (no key)'
-    assert 'MISSING' in out and 'Generate new private key' in out and str(key.parent) in out and 'never paste it' in out
+    assert 'MISSING' in out and 'Generate new private key' in out and str(key.parent) in out and 'never send it' in out
 
 
 def test_a_file_that_is_not_a_service_account_key_fails_before_anything_is_sent(check, capsys, key):
@@ -87,6 +87,25 @@ def test_a_database_with_its_own_name_is_shown_and_used(check, capsys, key):
     code = check.main([], settings=Settings(storage='auto', firebase_key=key, firestore_database='kiro-db'), make_backend=make)
     out = capsys.readouterr().out
     assert code == 0 and asked == ['kiro-db'] and 'database ....... kiro-db' in out
+
+
+def test_a_key_given_in_the_setting_is_used_instead_of_a_file_and_never_shown(check, capsys, key):
+    from fake_firebase import key_text
+
+    seen = []
+
+    def make(settings):
+        seen.append(settings.firebase_key_json)
+        return FakeBackend()
+
+    code = check.main([], settings=Settings(storage='firestore', firebase_key=key, firebase_key_json=key_text()), make_backend=make)
+    out = capsys.readouterr().out
+    assert code == 0 and result_line(out) == 'RESULT: PASS', out
+    assert 'the FIREBASE_KEY_JSON setting ... found' in out and 'MISSING' not in out and seen == [key_text()]
+    assert f'project ........ {PROJECT}' in out and private_key_text() not in out and 'PRIVATE KEY' not in out
+    code, out = run(check, capsys, key, firebase_key_json=key_text(private_key='cut short'))
+    assert code == 1 and 'That setting cannot be used' in out and 'FIREBASE_KEY_JSON holds a key that cannot be read' in out
+    assert private_key_text() not in out
 
 
 def test_storage_memory_is_pointed_out_even_when_the_database_works(check, capsys, key):

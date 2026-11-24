@@ -150,6 +150,16 @@ def test_the_settings_check_says_where_accounts_are_kept(pf, tmp_path):
     assert status == 'WARN' and 'Accounts are kept in the online database' in note  # WARN only because there is no Gemini key
 
 
+def test_a_firebase_key_given_in_the_setting_counts_as_a_key(pf, tmp_path):
+    from fake_firebase import key_text
+
+    no_file = tmp_path / 'firebase-service-account.json'
+    status, words = pf.storage_check(Settings(storage='firestore', firebase_key=no_file, firebase_key_json=key_text()))
+    assert status == 'PASS' and f'online database, Firebase project {PROJECT}' in words and private_key_text() not in words
+    status, words = pf.storage_check(Settings(storage='firestore', firebase_key=no_file, firebase_key_json='{"type": "x"}'))
+    assert status == 'FAIL' and 'FIREBASE_KEY_JSON is not a service account key' in words
+
+
 def test_a_firebase_key_the_server_cannot_use_is_a_warning_or_a_failure(pf, tmp_path):
     key = tmp_path / 'firebase-service-account.json'
     status, note = pf.check_settings(Settings(storage='firestore', firebase_key=key, gemini_api_key=KEY), tmp_path / '.env')

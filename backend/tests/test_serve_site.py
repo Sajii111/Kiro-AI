@@ -225,6 +225,16 @@ def test_the_window_says_firestore_and_the_project_when_the_key_can_be_used(serv
     assert private_key_text().split()[3] not in text and 'PRIVATE KEY' not in text  # [3]: the first line of the key itself
 
 
+def test_the_window_says_firestore_when_the_key_is_given_in_the_setting(serve, capsys, storage_env, monkeypatch):
+    from fake_firebase import PROJECT, key_text, private_key_text
+
+    storage_env('firestore')  # no key file
+    monkeypatch.setenv('FIREBASE_KEY_JSON', key_text())
+    text = window_text(serve, capsys)
+    assert f'Storage: FIRESTORE (Firebase project {PROJECT})' in text and 'no Firebase key' not in text
+    assert private_key_text().split()[3] not in text and 'PRIVATE KEY' not in text
+
+
 def test_the_window_says_memory_when_there_is_no_key_or_storage_memory(serve, capsys, storage_env):
     storage_env('auto')
     assert 'Storage: MEMORY. Accounts last until this window closes' in window_text(serve, capsys)

@@ -11,7 +11,13 @@ from __future__ import annotations
 import json
 
 import pytest
-from fake_firebase import PROJECT, FakeBackend, private_key_text, write_key_file
+from fake_firebase import (
+    PROJECT,
+    FakeBackend,
+    key_text,
+    private_key_text,
+    write_key_file,
+)
 from fastapi.testclient import TestClient
 from helpers import (
     add_conversation,
@@ -398,6 +404,115 @@ def test_the_key_check_names_the_project_or_the_problem_and_never_the_key(tmp_pa
     assert 'not a service account key' in check_key(Settings(firebase_key=key))[1]
     for text in (project, problem):
         assert private_key_text() not in text and 'PRIVATE KEY' not in text
+
+
+# ------------------------------------------------------------------ the key given as a setting (a hosting service has no files)
+
+
+def as_base64(text: str, wrap: int = 0) -> str:
+    import base64
+
+    encoded = base64.b64encode(text.encode('utf-8')).decode('ascii')
+    if wrap:  # the way `base64` on Linux or macOS lays it out
+        encoded = '\n'.join(encoded[i : i + wrap] for i in range(0, len(encoded), wrap))
+    return encoded
+
+
+def test_the_key_can_be_pasted_into_a_setting_instead_of_a_file(tmp_path):
+    no_file = tmp_path / 'missing.json'
+    with_line_breaks = key_text().replace('\\n', '\n')  # a settings page that turned the \n in the private key into real ones
+    for text in (key_text(), as_base64(key_text()), as_base64(key_text(), wrap=76), f"'{key_text()}'", with_line_breaks):
+        store = build_store(Settings(storage='firestore', firebase_key=no_file, firebase_key_json=text))
+        assert storage_name(store) == 'firestore' and store.backend.project_id == PROJECT
+        assert check_key(Settings(firebase_key=no_file, firebase_key_json=text)) == (PROJECT, '')
+    assert storage_name(build_store(Settings(storage='auto', firebase_key=no_file, firebase_key_json=key_text()))) == 'firestore'
+
+
+def test_a_key_in_the_setting_wins_over_a_key_file(tmp_path):
+    other = write_key_file(tmp_path / 'firebase-service-account.json', project='some-other-project')
+    store = build_store(Settings(storage='firestore', firebase_key=other, firebase_key_json=key_text()))
+    assert store.backend.project_id == PROJECT
+    settings = Settings(firebase_key=other, firebase_key_json=key_text())
+    assert settings.firebase_key_given and settings.firebase_key_place == 'the FIREBASE_KEY_JSON setting'
+    assert Settings(firebase_key=other).firebase_key_place == str(other)
+    assert not Settings(firebase_key=tmp_path / 'missing.json').firebase_key_given
+
+
+def test_a_key_in_the_setting_that_cannot_be_used_says_why_and_never_repeats_the_key(tmp_path):
+    no_file = tmp_path / 'missing.json'
+    cases = {
+        '{ not json at all': 'is not readable JSON',
+        'definitely not base64!': "neither the key file's text nor base64 of it",
+        as_base64('\xff not a key'): 'is not readable JSON',
+        '{"type": "authorized_user"}': 'FIREBASE_KEY_JSON is not a service account key',
+        key_text(private_key=None): 'FIREBASE_KEY_JSON has no private_key',
+        key_text(private_key='cut short'): 'FIREBASE_KEY_JSON holds a key that cannot be read (was it cut short when it was pasted in?)',
+    }
+    for text, why in cases.items():
+        assert storage_name(build_store(Settings(storage='auto', firebase_key=no_file, firebase_key_json=text))) == 'memory'
+        with pytest.raises(StorageNotReady) as stopped:
+            build_store(Settings(storage='firestore', firebase_key=no_file, firebase_key_json=text))
+        message = str(stopped.value)
+        assert why in message and 'Paste the whole key file into the FIREBASE_KEY_JSON setting again' in message
+        project, problem = check_key(Settings(firebase_key=no_file, firebase_key_json=text))
+        assert project == '' and why in problem
+        for said in (message, problem):
+            assert 'PRIVATE KEY' not in said and private_key_text() not in said and text not in said
+
+
+def test_with_no_key_anywhere_storage_firestore_stops_and_says_both_ways_to_give_it(tmp_path):
+    with pytest.raises(StorageNotReady) as stopped:
+        build_store(Settings(storage='firestore', firebase_key=tmp_path / 'nope.json'))
+    message = str(stopped.value)
+    assert 'there is no key file' in message and str(tmp_path / 'nope.json') in message and 'FIREBASE_KEY_JSON' in message
+
+
+def test_the_setting_is_read_from_the_environment_and_never_shown(tmp_path, monkeypatch):
+    monkeypatch.setenv('FIREBASE_KEY', str(tmp_path / 'missing.json'))
+    monkeypatch.setenv('FIREBASE_KEY_JSON', f'  {key_text()}  ')
+    monkeypatch.setenv('STORAGE', 'auto')
+    settings = read_settings()
+    assert settings.firebase_key_json == key_text() and storage_name(build_store(settings)) == 'firestore'
+    assert 'PRIVATE KEY' not in repr(settings) and 'firebase_key_json' not in repr(settings)
+    monkeypatch.delenv('FIREBASE_KEY_JSON')
+    assert read_settings().firebase_key_json == '' and storage_name(build_store(read_settings())) == 'memory'
+
+
+def test_a_server_built_with_the_key_in_the_setting_keeps_accounts_in_the_database(tmp_path, site_dir, backend, monkeypatch):
+    """The whole way a hosting service starts it: the key only in FIREBASE_KEY_JSON, no file anywhere."""
+    made = []
+
+    def connect(cls, path, database='(default)', text=''):
+        made.append((path, database, text))
+        return backend
+
+    backend.project_id = PROJECT
+    monkeypatch.setattr(fs.FirestoreBackend, 'from_key_file', classmethod(connect))
+    settings = Settings(env='test', site_dir=site_dir, stage_pause_ms=0, storage='firestore', firebase_key=tmp_path / 'missing.json',
+                        firebase_key_json=key_text())
+    server = TestClient(create_app(settings))
+    assert server.get('/v1/health').json()['storage'] == 'firestore'
+    sign_up(server, email='host@example.com')
+    assert made and made[0][2] == key_text()
+    assert any(path.startswith('users/') for path in backend.docs) and any(path.startswith('emails/') for path in backend.docs)
+    again = TestClient(create_app(settings))  # the host restarted the service
+    signed_in = again.post('/v1/auth/signin', json={'email': 'host@example.com', 'password': PASSPHRASE})
+    assert signed_in.status_code == 200
+
+
+def test_the_docker_image_always_keeps_accounts_in_firebase():
+    """The image for a hosting service must never quietly keep accounts in memory only: STORAGE=firestore makes the server
+    refuse to start without a usable key, and the notes say where the key goes and that only one copy may run."""
+    from pathlib import Path
+
+    dockerfile = Path(__file__).resolve().parents[2] / 'Dockerfile'
+    if not dockerfile.is_file():
+        pytest.skip('no Dockerfile in this copy')
+    text = dockerfile.read_text(encoding='utf-8')
+    env = text[text.index('ENV APP_ENV=production') :].split('\n\n')[0]
+    assert 'STORAGE=firestore' in env and 'STORAGE=memory' not in env
+    assert 'FIREBASE_KEY_JSON' in text and 'one instance' in text and '/v1/health' in text
+    assert 'backend/secrets' in (dockerfile.parent / '.dockerignore').read_text(encoding='utf-8')
 
 
 def test_the_tests_themselves_never_use_a_real_database():

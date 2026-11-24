@@ -1,15 +1,16 @@
-# Kiro AI in one container, for Render or any other Docker host.
+# Kiro AI in one container, for any Docker host (Railway, Azure Container Apps, Google Cloud Run, ...).
 # The website and the API are served from ONE address (the same layout as run.bat), so there is no CORS to set up.
 #
-# Render settings (dashboard: New > Web Service > pick the repo):
-#   Language           Docker
-#   Instance Type      Free
-#   Health Check Path  /v1/health        (Settings, after the service exists)
-#   Environment        GEMINI_API_KEY = your key      (optional: without it the fixed wording writes every report)
-#                      Never put the key in this file or in the repo.
+# Settings to give the host (its "Variables", "Environment" or "Secrets" page). Never put them in this file or in the repo:
+#   FIREBASE_KEY_JSON  the whole text of backend/secrets/firebase-service-account.json, pasted in as it is (or base64 of it,
+#                      if the host's box keeps only one line). REQUIRED: without it the server does not start (see STORAGE below).
+#   GEMINI_API_KEY     your key (optional: without it the fixed wording writes every report)
+# Health check path: /v1/health   (it also says "storage": "firestore" once the database is in use)
 #
 # Things that must stay true:
-#   * ONE worker. Accounts and guest sessions live in this process's memory, so a second worker would not see them.
+#   * ONE copy of the server: one worker here, and one instance (replica) on the host. Every change is saved to Firestore
+#     straight away, but each copy also keeps a working copy in its memory, so a second copy would not see the first one's
+#     changes and could save over them. Set the host's maximum instances / replicas to 1.
 #   * The hand model (about 7.8 MB) is not in Git (.gitignore). The build downloads it. If that download ever fails, put the
 #     file in backend/models/ and add   !backend/models/hand_landmarker.task   to .gitignore: it is then used as it is.
 #   * The built website (dist-server) is not in Git either. Stage 1 builds it.
@@ -60,16 +61,19 @@ RUN python scripts/fetch_models.py
 # the website from stage 1, where the server looks for it by default (next to backend/)
 COPY --from=site /build/dist-server dist-server
 
-# APP_ENV=production: cookies only over HTTPS (Render serves HTTPS) and no /v1/docs
+# APP_ENV=production: cookies only over HTTPS (hosting services serve HTTPS) and no /v1/docs
 # ANALYSIS_MODE=real: refuse to start when the hand model is missing, rather than quietly give sample readings
-# STORAGE=memory: no Firebase here. Accounts last until the service restarts or sleeps.
+# STORAGE=firestore: accounts, sign-ins, hand profiles, readings and chats are kept in your Firebase project's database, so a
+#   restart, a redeploy or a sleeping service loses nothing (photos and guest sessions are never saved, as on the PC). The
+#   server refuses to start without a usable key in FIREBASE_KEY_JSON, rather than quietly keep accounts in memory only.
+#   For a quick local test with no database:   docker run -e STORAGE=memory -e COOKIE_SECURE=0 -p 10000:10000 <image>
 ENV APP_ENV=production \
     ANALYSIS_MODE=real \
-    STORAGE=memory
+    STORAGE=firestore
 
 RUN useradd --create-home --uid 10001 app
 USER app
 WORKDIR /app/backend
 
-# Render sets PORT (10000 unless changed). --proxy-headers: the real address and https come from Render's front door.
+# The host sets PORT (10000 when it does not). --proxy-headers: the real address and https come from the host's front door.
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 5 --no-use-colors"]

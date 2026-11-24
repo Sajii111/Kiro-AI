@@ -2,8 +2,9 @@
 
 They come from environment variables. A file called `backend/.env` is read too (see `.env.example`); a real
 environment variable always wins over the file. Nothing secret is needed to run the photo analysis. The Gemini key, which
-makes the language model write the reports and the chat, lives only in `backend/.env`; the Firebase credentials arrive in a
-later phase and will live only in `backend/secrets/`. Neither is ever printed, logged or committed.
+makes the language model write the reports and the chat, lives only in `backend/.env`; the Firebase key lives only in
+`backend/secrets/` on a computer, or in the FIREBASE_KEY_JSON setting on a hosting service. Neither is ever printed, logged or
+committed.
 """
 
 from __future__ import annotations
@@ -119,6 +120,10 @@ class Settings:
     storage: str = 'memory'
     #: the service account key the Firebase console makes (Project settings > Service accounts). Never commit it.
     firebase_key: Path = BACKEND_DIR / 'secrets' / 'firebase-service-account.json'
+    #: the same key as text, for a hosting service that has settings boxes rather than files (FIREBASE_KEY_JSON): the key file's
+    #: text pasted in as it is, or base64 of it. When it is set it is used instead of `firebase_key`. Hidden from repr(), like
+    #: the Gemini key.
+    firebase_key_json: str = field(default='', repr=False)
     #: which of the project's Firestore databases: "(default)" unless it was given its own name when it was created
     firestore_database: str = '(default)'
 
@@ -146,6 +151,16 @@ class Settings:
         if not self.gemini_discover:
             return None
         return 0 if self.gemini_fallbacks_off else EXTRA_MODELS
+
+    @property
+    def firebase_key_given(self) -> bool:
+        """True when there is a Firebase key to try: text in FIREBASE_KEY_JSON, or the key file."""
+        return bool(self.firebase_key_json.strip()) or self.firebase_key.is_file()
+
+    @property
+    def firebase_key_place(self) -> str:
+        """Where the Firebase key comes from, for messages. Never the key itself."""
+        return 'the FIREBASE_KEY_JSON setting' if self.firebase_key_json.strip() else str(self.firebase_key)
 
     def with_(self, **changes) -> Settings:
         return replace(self, **changes)
@@ -186,5 +201,6 @@ def read_settings() -> Settings:
         gemini_discover=os.environ.get('GEMINI_DISCOVER', '1').strip().lower() not in ('0', 'false', 'no', 'off'),
         storage=storage if storage in ('auto', 'memory', 'firestore') else 'auto',
         firebase_key=Path(firebase_key) if firebase_key else BACKEND_DIR / 'secrets' / 'firebase-service-account.json',
+        firebase_key_json=os.environ.get('FIREBASE_KEY_JSON', '').strip(),
         firestore_database=database or '(default)',
     )

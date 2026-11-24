@@ -1,8 +1,8 @@
 """Talks to Cloud Firestore over its REST API, signed in as the project's service account.
 
 The service account's key is the JSON file the Firebase console makes ("Project settings > Service accounts > Generate new
-private key"), kept in backend/secrets/ and never committed. Its contents are never logged or shown: messages name only the
-project.
+private key"), kept in backend/secrets/ and never committed. On a hosting service the same key can be pasted into the
+FIREBASE_KEY_JSON setting instead (see read_key_text). Its contents are never logged or shown: messages name only the project.
 
 Only plain fields are written (text, whole numbers, true/false), which is all persist.py needs. The REST API was chosen over
 Google's Firestore library because it needs nothing beyond what the server already installs (google-auth and requests, which
@@ -11,6 +11,7 @@ the Gemini library brings), so there is no large extra download and nothing that
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 from urllib.parse import quote
@@ -65,6 +66,20 @@ def from_fields(fields: dict | None) -> dict:
     return {key: decode(value) for key, value in (fields or {}).items()}
 
 
+#: the setting that can hold the key as text instead of a file. Messages name it, since such a key has no file name.
+KEY_SETTING = 'FIREBASE_KEY_JSON'
+
+
+def checked_key(info, name: str) -> dict:
+    """The key's contents, checked for the parts that are needed. `name` is what messages call it (a file name or the setting)."""
+    if not isinstance(info, dict) or info.get('type') != 'service_account':
+        raise ValueError(f'{name} is not a service account key (the Firebase console makes one under Service accounts)')
+    for field in ('project_id', 'private_key', 'client_email'):
+        if not info.get(field):
+            raise ValueError(f'{name} has no {field}')
+    return info
+
+
 def read_key_file(path: Path) -> dict:
     """The service account key, checked for the parts that are needed. Raises ValueError with a plain reason."""
     try:
@@ -73,24 +88,43 @@ def read_key_file(path: Path) -> dict:
         raise ValueError(f'there is no key file at {path}') from None
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         raise ValueError(f'{Path(path).name} is not a readable JSON key file') from None
-    if not isinstance(info, dict) or info.get('type') != 'service_account':
-        raise ValueError(f'{Path(path).name} is not a service account key (the Firebase console makes one under Service accounts)')
-    for field in ('project_id', 'private_key', 'client_email'):
-        if not info.get(field):
-            raise ValueError(f'{Path(path).name} has no {field}')
-    return info
+    return checked_key(info, Path(path).name)
 
 
-def load_credentials(path: Path):
-    """(the key file's contents, Google credentials made from it). Nothing is sent anywhere yet: this only proves the key can
-    be read. Raises ValueError with a plain reason (never the key itself)."""
+def read_key_text(text: str) -> dict:
+    """The service account key given as text in FIREBASE_KEY_JSON, checked like a key file. It may be the key file's text pasted
+    in as it is, or base64 of it (for a settings box that keeps only one line). Raises ValueError with a plain reason that never
+    repeats the text."""
+    raw = text.strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in '"\'':  # some settings pages keep the quotes typed around a value
+        raw = raw[1:-1].strip()
+    if not raw.startswith('{'):
+        try:
+            raw = base64.b64decode(''.join(raw.split()), validate=True).decode('utf-8-sig')
+        except ValueError:  # not base64, or base64 of something that is not text (binascii.Error and UnicodeDecodeError)
+            raise ValueError(f"{KEY_SETTING} is neither the key file's text nor base64 of it") from None
+    try:
+        # strict=False: a settings page that turned the \n inside the private key into real line breaks still gives a usable key
+        info = json.loads(raw, strict=False)
+    except json.JSONDecodeError:
+        raise ValueError(f'{KEY_SETTING} is not readable JSON (was the whole key file pasted in?)') from None
+    return checked_key(info, KEY_SETTING)
+
+
+def load_credentials(path: Path, text: str = ''):
+    """(the key's contents, Google credentials made from it): from `text` (FIREBASE_KEY_JSON) when there is any, otherwise from
+    the key file. Nothing is sent anywhere yet: this only proves the key can be read. Raises ValueError with a plain reason
+    (never the key itself)."""
     from google.oauth2 import service_account
 
-    info = read_key_file(path)
+    if text.strip():
+        info, name, how = read_key_text(text), KEY_SETTING, 'was it cut short when it was pasted in?'
+    else:
+        info, name, how = read_key_file(path), Path(path).name, 'was the file edited or cut short?'
     try:
         credentials = service_account.Credentials.from_service_account_info(info, scopes=[SCOPE])
     except ValueError:  # a private key that cannot be read, or a part missing that Google's library needs
-        raise ValueError(f'{Path(path).name} holds a key that cannot be read (was the file edited or cut short?)') from None
+        raise ValueError(f'{name} holds a key that cannot be read ({how})') from None
     return info, credentials
 
 
@@ -103,10 +137,11 @@ class FirestoreBackend:
         self.root = f'projects/{project_id}/databases/{database}/documents'
 
     @classmethod
-    def from_key_file(cls, path: Path, database: str = '(default)') -> FirestoreBackend:
+    def from_key_file(cls, path: Path, database: str = '(default)', text: str = '') -> FirestoreBackend:
+        """Signed in with the key file, or with the key given as text (FIREBASE_KEY_JSON) when `text` has any."""
         from google.auth.transport.requests import AuthorizedSession
 
-        info, credentials = load_credentials(path)
+        info, credentials = load_credentials(path, text)
         return cls(info['project_id'], AuthorizedSession(credentials), database=database)
 
     # ------------------------------------------------------------ the three things persist.py asks for

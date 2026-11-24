@@ -235,7 +235,7 @@ def storage_check(settings) -> tuple[str, str]:
 
     if settings.storage == 'memory':
         return 'PASS', 'accounts are kept in memory only (STORAGE=memory)'
-    if not settings.firebase_key.is_file():
+    if not settings.firebase_key_given:
         if settings.storage == 'firestore':
             return 'FAIL', (
                 f'STORAGE=firestore, but there is no Firebase key at {settings.firebase_key}, so run.bat would stop. '

@@ -308,7 +308,7 @@ def say_storage_mode() -> None:
     if settings.storage == 'memory':
         say('      Storage: MEMORY (STORAGE=memory in backend\\.env). Accounts last until this window closes.')
         return
-    if not settings.firebase_key.is_file():
+    if not settings.firebase_key_given:
         if settings.storage == 'firestore':
             say(f'      STORAGE=firestore, but there is no Firebase key at {settings.firebase_key}. The server will stop.')
             return
