@@ -2,8 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { errorMessage } from '../api/errors'
-import type { AccountStorage, DataCounts } from '../api/types'
+import type { AccountStorage, DataCounts, HandProfile } from '../api/types'
 import Avatar from '../components/ui/Avatar'
+import PlanetAvatar from '../components/ui/PlanetAvatar'
 import { originOf } from '../lib/themeTransition'
 import ChoiceCard from '../components/ui/ChoiceCard'
 import Icon from '../components/ui/icons'
@@ -12,13 +13,15 @@ import Spinner from '../components/ui/Spinner'
 import Switch from '../components/ui/Switch'
 import TextField from '../components/ui/TextField'
 import { useToast } from '../components/ui/Toast'
-import { plural } from '../lib/format'
+import { formatDate, plural } from '../lib/format'
 import { useResource } from '../lib/useResource'
 import { useData } from '../state/data'
 import { forgetAllPhotos } from '../state/media'
 import { useSession } from '../state/session'
 import { useUi } from '../state/ui'
 import { DISCLAIMER_LONG } from './copy'
+import { RemoveLockModal } from './palm/LockModals'
+import { DeleteProfileModal, RenameProfileModal } from './ProfileModals'
 
 // Settings: who you are, how it looks, what happens to your data, and the controls for taking it with you or
 // deleting it. In the sample build there is also a small set of demonstration tools.
@@ -56,6 +59,7 @@ const PRIVACY: { title: string; text: string }[] = [
   { title: 'One chat belongs to one reading.', text: 'Chats never mix between readings or between profiles.' },
   { title: 'Someone else’s palms need their yes.', text: 'A profile for another person records that they agreed.' },
   { title: 'Guest sessions are temporary.', text: 'Everything from one is deleted when it ends, unless you choose to copy it into a new account.' },
+  { title: 'A palm lock keeps no photo.', text: 'Locking a profile keeps an encrypted template: numbers made from the palm’s creases, which cannot be turned back into a picture. It is never sent to Gemini, and taking the lock off deletes it. The attempt log keeps times, outcomes and scores only.' },
 ]
 
 // ------------------------------------------------------------------ delete everything (type a word to confirm)
@@ -72,11 +76,13 @@ function DeleteAllModal({ open, onClose, counts }: { open: boolean; onClose: () 
 function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBusy: (busy: boolean) => void; counts: { profiles: number; readings: number; chats: number; messages: number } | undefined }) {
   const navigate = useNavigate()
   const toast = useToast()
-  const { refresh } = useData()
+  const { refresh, profiles } = useData()
   const [text, setText] = useState('')
+  const [password, setPassword] = useState('')
   const [busy, setBusyState] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const ready = text.trim() === 'DELETE'
+  const needsPassword = !!profiles?.some((p) => p.locked)
+  const ready = text.trim() === 'DELETE' && (!needsPassword || !!password)
 
   const setBusy = (value: boolean) => {
     setBusyState(value)
@@ -89,7 +95,7 @@ function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBus
     setBusy(true)
     setError(null)
     try {
-      const gone: DataCounts = await api.deleteAllData()
+      const gone: DataCounts = await api.deleteAllData(needsPassword ? password : undefined)
       forgetAllPhotos()
       refresh()
       toast(`Deleted everything: ${plural(gone.profiles, 'profile')}, ${plural(gone.readings, 'reading')}, ${plural(gone.conversations, 'chat')} and ${plural(gone.messages, 'message')}.`)
@@ -126,8 +132,19 @@ function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBus
         autoCapitalize="off"
         spellCheck={false}
         autoFocus
-        error={error}
+        error={needsPassword ? null : error}
       />
+      {needsPassword && (
+        <TextField
+          label="Account password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          hint="Some profiles are locked, and their readings go too, so your password stands in for their palms."
+          error={error}
+        />
+      )}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
           Keep my data
@@ -186,10 +203,105 @@ function EndGuestForm({ onClose }: { onClose: () => void }) {
 
 // ------------------------------------------------------------------ the page
 
+// ------------------------------------------------------------------ the open profile, apart from the account
+
+function ProfileSection({ profile, canLock }: { profile: HandProfile | null; canLock: boolean }) {
+  const { refresh } = useData()
+  const navigate = useNavigate()
+  const [renaming, setRenaming] = useState<HandProfile | null>(null)
+  const [deleting, setDeleting] = useState<HandProfile | null>(null)
+  const [removing, setRemoving] = useState<HandProfile | null>(null)
+
+  return (
+    <Section id="set-profile" title={profile ? `This profile: ${profile.name}` : 'This profile'} lead="Settings for the hand profile open now. The account’s own settings are below.">
+      {!profile ? (
+        <p className="text-sm text-muted">
+          No profile is open. <Link to="/app" className="underline">Choose one on the profiles page</Link> (a locked one opens with its palm).
+        </p>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <PlanetAvatar seed={profile.id} size={52} />
+              <div className="min-w-0">
+                <p className="truncate font-display text-xl">{profile.name}</p>
+                <p className="text-sm text-muted">
+                  {profile.owner === 'self' ? 'My hands' : 'Shared with permission'} · {plural(profile.readingCount, 'reading')}
+                </p>
+              </div>
+            </div>
+            <p className="break-all font-mono text-xs text-muted">User ID: {profile.id}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setRenaming(profile)} className="btn btn-ghost btn-sm">
+                <Icon name="pencil" size={14} /> Rename
+              </button>
+              <button type="button" onClick={() => setDeleting(profile)} className="btn btn-ghost btn-sm">
+                <Icon name="trash" size={14} /> Delete profile
+              </button>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-ink/10 p-5">
+            <h3 className="flex items-center gap-2 font-medium">
+              <Icon name="shield" size={16} /> Palm lock
+            </h3>
+            {profile.lock ? (
+              <>
+                <p className="mt-1 text-sm text-muted">
+                  On, with the {profile.lock.side} palm, since {formatDate(profile.lock.createdAt)} ({plural(profile.lock.samples, 'photo')}). Unlocked in this browser for now.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={async () => {
+                      await api.closeProfile().catch(() => undefined)
+                      refresh()
+                      navigate('/app')
+                    }}
+                  >
+                    <Icon name="shield" size={14} /> Lock now
+                  </button>
+                  <Link to={`/app/lock/${profile.id}`} className="btn btn-ghost btn-sm">
+                    <Icon name="swap" size={14} /> Replace
+                  </Link>
+                  <button type="button" onClick={() => setRemoving(profile)} className="btn btn-ghost btn-sm">
+                    <Icon name="x" size={14} /> Take it off
+                  </button>
+                </div>
+              </>
+            ) : canLock ? (
+              <>
+                <p className="mt-1 text-sm text-muted">Off. With a lock, this profile’s readings and chats open only after its palm is shown.</p>
+                <Link to={`/app/lock/${profile.id}`} className="btn btn-ghost btn-sm mt-4">
+                  <Icon name="shield" size={14} /> Set up a palm lock
+                </Link>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted">Palm locks are for accounts. Create an account to lock a profile.</p>
+            )}
+            <p className="mt-4 text-xs text-muted">
+              <Link to="/app/security" className="underline">
+                Attempt log
+              </Link>{' '}
+              ·{' '}
+              <Link to="/app/palm-lab" className="underline">
+                How the palm lock decides
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
+      <RenameProfileModal profile={renaming} onClose={() => setRenaming(null)} />
+      <DeleteProfileModal profile={deleting} onClose={() => setDeleting(null)} />
+      <RemoveLockModal profile={removing} onClose={() => setRemoving(null)} />
+    </Section>
+  )
+}
+
 export default function Settings() {
   const { session, signOut, refresh: refreshSession } = useSession()
   const { theme, toggleTheme, soundOn, toggleSound } = useUi()
-  const { profiles, refresh } = useData()
+  const { profiles, activeProfile, refresh } = useData()
   const toast = useToast()
   const navigate = useNavigate()
   const guest = session?.kind === 'guest'
@@ -255,6 +367,8 @@ export default function Settings() {
         <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">Your account and your data</h1>
         <p className="mt-3 max-w-2xl text-pretty text-muted">Choose how it looks, see what is kept, and take your data with you or delete it.</p>
       </header>
+
+      <ProfileSection profile={activeProfile} canLock={session?.kind === 'user'} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Section id="set-account" title={guest ? 'Guest session' : 'Account'}>

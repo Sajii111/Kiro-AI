@@ -1,0 +1,38 @@
+{
+  "calibrated": false,
+  "threshold": 0.4793,
+  "normalisers": {
+    "crease": {
+      "impostor": 0.5273,
+      "genuine": 0.7837
+    },
+    "compcode": {
+      "impostor": 0.5653,
+      "genuine": 0.6911
+    },
+    "lbp": {
+      "impostor": 0.8977,
+      "genuine": 0.945
+    }
+  },
+  "weights": {
+    "crease": 0.5,
+    "compcode": 0.5
+  },
+  "source": "pilot photos: 2 people, 10 photos (a placeholder until a real dataset is measured)",
+  "engine_version": "palm-lock 0.2",
+  "config_hash": "d75f4aac6c3f7a0e",
+  "measured": {
+    "date": "2026-11-26",
+    "people": 2,
+    "photos": 10,
+    "genuine_pairs": 20,
+    "impostor_pairs": 25,
+    "eer": 0.0,
+    "far": 0.0,
+    "frr": 0.0,
+    "genuine_mean": 0.8861,
+    "impostor_mean": 0.0967,
+    "note": "pairwise scores of the photos the threshold was set on"
+  }
+}

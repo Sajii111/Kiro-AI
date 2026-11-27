@@ -1,0 +1,38 @@
+{
+  "calibrated": false,
+  "threshold": 0.5632,
+  "normalisers": {
+    "crease": {
+      "impostor": 0.8615,
+      "genuine": 0.9672
+    },
+    "compcode": {
+      "impostor": 0.7742,
+      "genuine": 0.9232
+    },
+    "lbp": {
+      "impostor": 0.9157,
+      "genuine": 0.9673
+    }
+  },
+  "weights": {
+    "crease": 0.5,
+    "compcode": 0.5
+  },
+  "source": "drawn test hands, 30 photos (a placeholder until a real dataset is measured)",
+  "engine_version": "palm-lock 0.2",
+  "config_hash": "d75f4aac6c3f7a0e",
+  "measured": {
+    "date": "2026-11-26",
+    "people": 6,
+    "photos": 30,
+    "genuine_pairs": 60,
+    "impostor_pairs": 375,
+    "eer": 0.0,
+    "far": 0.0,
+    "frr": 0.0,
+    "genuine_mean": 0.9434,
+    "impostor_mean": 0.0771,
+    "note": "pairwise scores of the photos the threshold was set on"
+  }
+}

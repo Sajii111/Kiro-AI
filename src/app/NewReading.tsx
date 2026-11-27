@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { errorMessage, isAbort } from '../api/errors'
 import type { HandSide, HandProfile, Reading } from '../api/types'
@@ -321,6 +321,13 @@ export default function NewReading() {
           <div className="h-12 w-56 animate-pulse rounded-full bg-ink/5" aria-busy="true" />
         ) : profiles.length === 0 ? (
           <NoProfile onAdd={() => setAdding(true)} />
+        ) : !activeProfile ? (
+          <p className="card flex max-w-xl items-start gap-3 p-5 text-sm text-muted">
+            <Icon name="shield" size={18} className="mt-0.5 shrink-0" />
+            <span>
+              No profile is open: every profile is locked. <Link to="/app" className="underline">Unlock one with its palm</Link>, then come back to make a reading for it.
+            </span>
+          </p>
         ) : (
           activeProfile && (
             <>
@@ -457,8 +464,9 @@ function ProfilePicker({ profiles, active, onPick, onAdd }: { profiles: HandProf
                     <PlanetAvatar seed={p.id} size={34} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{p.name}</span>
-                      <span className="block text-xs text-muted">{p.owner === 'self' ? 'My hands' : 'Shared with permission'}</span>
+                      <span className="block text-xs text-muted">{p.locked ? 'Locked: unlock with the palm' : p.owner === 'self' ? 'My hands' : 'Shared with permission'}</span>
                     </span>
+                    {p.locked && <Icon name="shield" size={16} className="text-muted" />}
                     {p.id === active.id && <Icon name="check" size={16} className="text-accent-ink" />}
                   </button>
                 </li>

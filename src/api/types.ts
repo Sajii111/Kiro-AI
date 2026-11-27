@@ -262,8 +262,123 @@ export type HandProfile = {
   /** For "other": the person agreed to their palms being uploaded */
   consent: boolean
   createdAt: string
+  /** 0 and null while the profile is locked: how much it holds is the profile's own business */
   readingCount: number
   lastReadingAt: string | null
+  /** the palm lock, or null when the profile has none */
+  lock: LockSummary | null
+  /** true while the profile has a lock and is not open in this browser: its readings and chats cannot be reached */
+  locked: boolean
+  /** true for the one profile open in this browser (the one the app is working in) */
+  open: boolean
+}
+
+// ------------------------------------------------------------------ palm locks (ICA 02)
+
+/** What may be known about a profile's palm lock. Never the template itself. */
+export type LockSummary = {
+  side: HandSide
+  createdAt: string
+  /** how many photos the lock was made from */
+  samples: number
+  engineVersion: string
+}
+
+/** The three outcomes of a palm attempt. */
+export type PalmOutcome = 'success' | 'failed' | 'invalid_image'
+
+export type AttemptKind = 'unlock' | 'test' | 'lock_added' | 'lock_replaced' | 'lock_removed' | 'profile_deleted'
+
+/** One line of the attempt log. Numbers and words only: never a photo, never a template. */
+export type Attempt = {
+  /** the attempt ID */
+  id: string
+  /** the user ID: the hand profile the attempt was for */
+  profileId: string
+  /** its name at the time */
+  profileName: string
+  kind: AttemptKind
+  at: string
+  outcome?: PalmOutcome
+  score?: number
+  threshold?: number
+  /** each deciding method's normalised score, 0 to 1 */
+  methods?: Record<string, number>
+  reason: string
+  /** why the photo could not be judged, for an invalid image */
+  problem?: string
+  hand?: HandSide
+  durationMs?: number
+  engineVersion: string
+  /** false while the threshold is a placeholder */
+  calibrated?: boolean
+  /** how a lock was taken off or a locked profile deleted */
+  via?: 'palm' | 'password'
+}
+
+export type UnlockStageKey = 'checks' | 'roi' | 'prep' | 'features' | 'match'
+
+/** One step of a palm attempt, as it happens. */
+export type UnlockEvent = {
+  stage: UnlockStageKey
+  state: StageState
+  detail?: string
+  /** a small picture of what the step made (data: URL) */
+  preview?: string
+  /** how long the step took */
+  ms?: number
+}
+
+/** The answer to a palm attempt. */
+export type PalmResult = {
+  attemptId: string
+  profileId: string
+  outcome: PalmOutcome
+  /** "Authentication Successful", "Authentication Failed" or "Invalid Image" */
+  title: string
+  /** the fused score, 0 to 1; left out for an invalid image */
+  score?: number
+  threshold: number
+  methods: Record<string, number>
+  /** every method's own similarity before normalising, the spare included */
+  raw: Record<string, number>
+  reason: string
+  problem?: string
+  hand: HandSide
+  durationMs: number
+  at: string
+  calibrated: boolean
+  engineVersion: string
+  /** true when this attempt opened the profile (a successful unlock, never a test) */
+  opened: boolean
+  bestSample?: number
+  /** set when this failure locked the profile out */
+  lockedUntil?: number
+}
+
+export type PalmMethod = { id: string; name: string; weight: number; description: string }
+
+/** How the palm lock decides. Read-only: the threshold changes only by calibrating on validation photos. */
+export type PalmLockInfo = {
+  available: boolean
+  note: string | null
+  engineVersion: string
+  configHash: string
+  calibrated: boolean
+  threshold: number
+  calibrationSource: string
+  measured: Record<string, string | number>
+  methods: PalmMethod[]
+  policy: { failures: number; windowMinutes: number; lockoutMinutes: number; idleMinutes: number; enrolMin: number; enrolMax: number }
+  roiSize: number
+}
+
+export type LockInput = {
+  side: HandSide
+  /** the owner (or, for "other", the person) agreed to their palm being used as a lock */
+  consent: boolean
+  /** 3 to 5 photos of the same palm, already shrunk by the browser */
+  photos: Blob[]
 }
 
 export type NewProfileInput = {
@@ -452,7 +567,25 @@ export interface Api {
   listProfiles(): Promise<HandProfile[]>
   createProfile(input: NewProfileInput): Promise<HandProfile>
   renameProfile(id: string, name: string): Promise<HandProfile>
-  deleteProfile(id: string): Promise<DeleteSummary>
+  /** A locked profile that is not open needs the account password. */
+  deleteProfile(id: string, password?: string): Promise<DeleteSummary>
+
+  // ---- palm locks
+  /** Opens a profile without a lock (or one already unlocked) in this browser. The one open before is closed. */
+  openProfile(id: string): Promise<HandProfile>
+  /** Closes the open profile; a locked one locks again. */
+  closeProfile(): Promise<void>
+  /** Locks a profile with 3 to 5 photos of one palm. The profile stays open afterwards. */
+  lockProfile(id: string, input: LockInput): Promise<HandProfile>
+  /** Takes the lock off: free while the profile is open, otherwise with the account password. */
+  removeLock(id: string, password?: string): Promise<HandProfile>
+  /** One photo against the lock. `onEvent` fires as each step starts and ends. A success opens the profile. */
+  unlockProfile(id: string, photo: Blob, onEvent: (event: UnlockEvent) => void, signal?: AbortSignal): Promise<PalmResult>
+  /** The Palm lab's test: one photo against the lock of a typed user ID. Opens nothing. */
+  testVerification(userId: string, photo: Blob, onEvent: (event: UnlockEvent) => void, signal?: AbortSignal): Promise<PalmResult>
+  palmLockInfo(): Promise<PalmLockInfo>
+  /** The attempt log, newest first. */
+  listActivity(profileId?: string): Promise<Attempt[]>
 
   /**
    * Checks one photo (already shrunk by the browser). The photo is discarded straight after.
@@ -478,7 +611,8 @@ export interface Api {
   deleteConversation(id: string): Promise<DeleteSummary>
 
   exportData(): Promise<ExportBundle>
-  deleteAllData(): Promise<DeleteSummary>
+  /** With a locked profile that is not open, the account password is needed. */
+  deleteAllData(password?: string): Promise<DeleteSummary>
 
   /** Only present on the sample backend. */
   demo?: DemoTools

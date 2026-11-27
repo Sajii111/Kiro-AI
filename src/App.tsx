@@ -19,12 +19,17 @@ import { UiProvider } from './state/ui'
 const SignIn = lazy(() => import('./pages/SignIn'))
 const StartGuest = lazy(() => import('./app/StartGuest'))
 const AppShell = lazy(() => import('./app/AppShell'))
-const Dashboard = lazy(() => import('./app/Dashboard'))
+const ProfileGate = lazy(() => import('./app/ProfileGate'))
+const RequireProfile = lazy(() => import('./app/ProfileGate').then((m) => ({ default: m.RequireProfile })))
 const NewReading = lazy(() => import('./app/NewReading'))
 const ReadingPage = lazy(() => import('./app/ReadingPage'))
 const ChatPage = lazy(() => import('./app/ChatPage'))
 const History = lazy(() => import('./app/History'))
 const Settings = lazy(() => import('./app/Settings'))
+const UnlockPage = lazy(() => import('./app/palm/UnlockPage'))
+const LockSetup = lazy(() => import('./app/palm/LockSetup'))
+const SecurityPage = lazy(() => import('./app/palm/SecurityPage'))
+const PalmLab = lazy(() => import('./app/palm/PalmLab'))
 
 /** The custom cursor and the floating sound button belong to the landing page only; the app stays plain and calm. */
 function LandingExtras({ landing }: { landing: boolean }) {
@@ -64,12 +69,53 @@ export default function App() {
                             </RequireSession>
                           }
                         >
-                          <Route index element={<Dashboard />} />
-                          <Route path="new" element={<NewReading />} />
-                          <Route path="readings/:id" element={<ReadingPage />} />
-                          <Route path="chat" element={<ChatPage />} />
-                          <Route path="history" element={<History />} />
+                          {/* the profile picker, then the chosen profile's home */}
+                          <Route index element={<ProfileGate />} />
+                          {/* the pages inside one profile: without an open profile they send the person to choose one */}
+                          <Route
+                            path="new"
+                            element={
+                              <RequireProfile>
+                                <NewReading />
+                              </RequireProfile>
+                            }
+                          />
+                          <Route
+                            path="readings/:id"
+                            element={
+                              <RequireProfile>
+                                <ReadingPage />
+                              </RequireProfile>
+                            }
+                          />
+                          <Route
+                            path="chat"
+                            element={
+                              <RequireProfile>
+                                <ChatPage />
+                              </RequireProfile>
+                            }
+                          />
+                          <Route
+                            path="history"
+                            element={
+                              <RequireProfile>
+                                <History />
+                              </RequireProfile>
+                            }
+                          />
                           <Route path="settings" element={<Settings />} />
+                          <Route path="unlock/:id" element={<UnlockPage />} />
+                          <Route path="lock/:id" element={<LockSetup />} />
+                          <Route
+                            path="security"
+                            element={
+                              <RequireProfile>
+                                <SecurityPage />
+                              </RequireProfile>
+                            }
+                          />
+                          <Route path="palm-lab" element={<PalmLab />} />
                           <Route path="*" element={<NotFound />} />
                         </Route>
                         <Route path="*" element={<NotBuilt title="Nothing here" note="That page does not exist." />} />

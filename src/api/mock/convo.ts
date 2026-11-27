@@ -3,14 +3,25 @@
 import { ApiError } from '../errors'
 import type { HandProfile, Message } from '../types'
 import { answer, type ChatContext } from './chat'
-import { newId, type StoredProfile, type StoreData } from './store'
+import { newId, openProfileId, type StoredProfile, type StoreData } from './store'
 
-/** A stored profile plus the counts the screens show. */
-export function toProfile(d: StoreData, p: StoredProfile): HandProfile {
-  const mine = d.readings.filter((r) => r.profileId === p.id)
+/** A stored profile plus the counts the screens show. A locked profile that is not open shows no counts. */
+export function toProfile(d: StoreData, p: StoredProfile, openId: string | null = openProfileId()): HandProfile {
+  const lock = d.locks.find((k) => k.profileId === p.id) ?? null
+  const locked = !!lock && p.id !== openId
+  const mine = locked ? [] : d.readings.filter((r) => r.profileId === p.id)
   const last = mine.reduce<string | null>((a, r) => (!a || r.createdAt > a ? r.createdAt : a), null)
-  return { ...p, readingCount: mine.length, lastReadingAt: last }
+  return {
+    ...p,
+    readingCount: mine.length,
+    lastReadingAt: last,
+    lock: lock ? { side: lock.side, createdAt: lock.createdAt, samples: lock.samples, engineVersion: MOCK_ENGINE } : null,
+    locked,
+    open: p.id === openId,
+  }
 }
+
+export const MOCK_ENGINE = 'sample lock (thumbnails)'
 
 /**
  * Adds a question and its answer to a conversation. The answer is built only from this conversation's reading,

@@ -6,26 +6,61 @@
 // Only structured findings, reports and chats are stored here. Photos are never written anywhere.
 
 import { ApiError } from '../errors'
-import type { Conversation, DataCounts, HandProfile, Message, Reading } from '../types'
+import type { Attempt, Conversation, DataCounts, HandProfile, HandSide, Message, Reading } from '../types'
 
-export type StoredProfile = Omit<HandProfile, 'readingCount' | 'lastReadingAt'>
+export type StoredProfile = Omit<HandProfile, 'readingCount' | 'lastReadingAt' | 'lock' | 'locked' | 'open'>
+
+/**
+ * A palm lock of the sample backend. It keeps tiny grey thumbnails of the enrolment photos, which only tell the very same
+ * photo apart from another: a stand-in for the real templates, which the server makes from the palm's creases.
+ */
+export type MockLock = {
+  profileId: string
+  side: HandSide
+  createdAt: string
+  samples: number
+  prints: number[][]
+  lockedUntil?: number
+}
 
 export type StoreData = {
   profiles: StoredProfile[]
   readings: Reading[]
   conversations: Conversation[]
   messages: Message[]
+  locks: MockLock[]
+  attempts: Attempt[]
 }
 
 export type Scope = { kind: 'guest' } | { kind: 'user'; userId: string }
 
-const empty = (): StoreData => ({ profiles: [], readings: [], conversations: [], messages: [] })
+const empty = (): StoreData => ({ profiles: [], readings: [], conversations: [], messages: [], locks: [], attempts: [] })
 
 let current: Scope | null = null
 const cache = new Map<string, StoreData>()
 
 export const setScope = (scope: Scope | null) => {
   current = scope
+  openState = null // a new session starts with every profile closed
+}
+
+// ------------------------------------------------------------------ the open profile (this tab only, like a server session)
+
+let openState: { profileId: string; lastSeen: number } | null = null
+export const IDLE_MS = 15 * 60_000
+
+/** The profile open in this tab. A locked one left alone too long locks itself again. */
+export function openProfileId(): string | null {
+  if (!openState || !current) return null
+  const d = dataFor(current)
+  if (!d.profiles.some((p) => p.id === openState!.profileId)) return (openState = null)
+  if (d.locks.some((k) => k.profileId === openState!.profileId) && Date.now() - openState.lastSeen > IDLE_MS) return (openState = null)
+  openState.lastSeen = Date.now()
+  return openState.profileId
+}
+
+export function setOpenProfile(profileId: string | null) {
+  openState = profileId ? { profileId, lastSeen: Date.now() } : null
 }
 export const getScope = () => current
 
@@ -54,7 +89,8 @@ export function dataFor(scope: Scope): StoreData {
     const raw = storageOf(scope)?.getItem(key)
     if (raw) {
       const parsed: unknown = JSON.parse(raw)
-      if (looksRight(parsed)) loaded = parsed
+      // data saved before palm locks existed has no locks and no attempt log yet
+      if (looksRight(parsed)) loaded = { ...parsed, locks: Array.isArray(parsed.locks) ? parsed.locks : [], attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [] }
     }
   } catch {
     /* unreadable data starts fresh */

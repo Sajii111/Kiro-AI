@@ -5,7 +5,7 @@
 // key lives only on the server. Ownership of every profile, reading and chat is checked server-side.
 
 import { API_URL } from '../config'
-import { ApiError, isAbort, SESSION_LOST_EVENT, type ApiErrorCode } from './errors'
+import { ApiError, isAbort, PROFILE_LOCKED_EVENT, SESSION_LOST_EVENT, type ApiErrorCode, type ApiErrorDetails } from './errors'
 import { readEventStream } from './sse'
 import type {
   Api,
@@ -14,29 +14,70 @@ import type {
   ConversationWithMessages,
   DataCounts,
   DeleteSummary,
+  Attempt,
   ExportBundle,
   HandProfile,
   Message,
+  PalmLockInfo,
+  PalmResult,
   ProcessingEvent,
   Reading,
   ReadingSummary,
   RestoreResult,
   Session,
+  UnlockEvent,
   ValidationResult,
 } from './types'
 
 const BASE = `${API_URL}/v1`
 
-const STATUS_CODE: Record<number, ApiErrorCode> = { 400: 'invalid', 401: 'unauthorised', 403: 'forbidden', 404: 'not_found', 410: 'expired', 422: 'invalid' }
+const STATUS_CODE: Record<number, ApiErrorCode> = {
+  400: 'invalid',
+  401: 'unauthorised',
+  403: 'forbidden',
+  404: 'not_found',
+  409: 'conflict',
+  410: 'expired',
+  422: 'invalid',
+  423: 'locked',
+  429: 'locked_out',
+  503: 'unavailable',
+}
+
+type ErrorBody = { error?: { code?: ApiErrorCode; message?: string } & ApiErrorDetails } | null
 
 async function fail(res: Response, path: string): Promise<never> {
-  const body = (await res.json().catch(() => null)) as { error?: { code?: ApiErrorCode; message?: string } } | null
+  const body = (await res.json().catch(() => null)) as ErrorBody
   const code = body?.error?.code ?? STATUS_CODE[res.status] ?? 'processing_failed'
   // Away from sign-in itself, 401 and 410 mean "your session is over": let the app look it up again and show sign-in.
   if ((res.status === 401 || res.status === 410) && !path.startsWith('/auth/') && path !== '/session') {
     window.dispatchEvent(new Event(SESSION_LOST_EVENT))
   }
-  throw new ApiError(code, body?.error?.message ?? (res.status >= 500 ? 'The server had a problem. Please try again in a moment.' : 'That did not work. Please try again.'))
+  // A profile that locked itself again (left alone too long): let the app show it locked.
+  if (code === 'locked') window.dispatchEvent(new CustomEvent(PROFILE_LOCKED_EVENT, { detail: body?.error?.profileId ?? null }))
+  const details: ApiErrorDetails = {}
+  if (body?.error?.photos) details.photos = body.error.photos
+  if (body?.error?.lockedUntil) details.lockedUntil = body.error.lockedUntil
+  if (body?.error?.profileId) details.profileId = body.error.profileId
+  throw new ApiError(code, body?.error?.message ?? (res.status >= 500 ? 'The server had a problem. Please try again in a moment.' : 'That did not work. Please try again.'), details)
+}
+
+/** A palm attempt (an unlock or a Palm lab test): a stream of steps, then the result. */
+async function palmAttempt(path: string, form: FormData, onEvent: (event: UnlockEvent) => void, signal?: AbortSignal): Promise<PalmResult> {
+  const res = await send('POST', path, form, signal)
+  if (!res.ok) await fail(res, path)
+  if (!res.body) throw new ApiError('processing_failed', 'The server did not send any progress. Nothing was decided. Please try again.')
+  let result: PalmResult | null = null
+  await readEventStream(res.body, (name, data) => {
+    if (name === 'stage') onEvent(data as UnlockEvent)
+    else if (name === 'result') result = data as PalmResult
+    else if (name === 'error') {
+      const e = data as { code?: ApiErrorCode; message?: string }
+      throw new ApiError(e.code ?? 'processing_failed', e.message ?? 'The attempt could not be finished. Please try again.')
+    }
+  })
+  if (!result) throw new ApiError('processing_failed', 'The attempt did not finish. Nothing was decided. Please try again.')
+  return result
 }
 
 async function send(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
@@ -84,7 +125,31 @@ export const httpApi: Api = {
   listProfiles: () => call<HandProfile[]>('GET', '/profiles'),
   createProfile: (input) => call<HandProfile>('POST', '/profiles', input),
   renameProfile: (id, name) => call<HandProfile>('PATCH', `/profiles/${encodeURIComponent(id)}`, { name }),
-  deleteProfile: (id) => call<DeleteSummary>('DELETE', `/profiles/${encodeURIComponent(id)}`),
+  deleteProfile: (id, password) => call<DeleteSummary>('DELETE', `/profiles/${encodeURIComponent(id)}`, password ? { password } : undefined),
+
+  openProfile: (id) => call<HandProfile>('POST', `/profiles/${encodeURIComponent(id)}/open`),
+  closeProfile: () => call<void>('POST', '/profiles/close'),
+  lockProfile(id, input) {
+    const form = new FormData()
+    form.set('side', input.side)
+    if (input.consent) form.set('consent', '1')
+    input.photos.forEach((photo, i) => form.set(`photo${i}`, photo, `palm-${i + 1}.jpg`))
+    return call<HandProfile>('POST', `/profiles/${encodeURIComponent(id)}/lock`, form)
+  },
+  removeLock: (id, password) => call<HandProfile>('DELETE', `/profiles/${encodeURIComponent(id)}/lock`, password ? { password } : undefined),
+  unlockProfile(id, photo, onEvent, signal) {
+    const form = new FormData()
+    form.set('photo', photo, 'palm.jpg')
+    return palmAttempt(`/profiles/${encodeURIComponent(id)}/unlock`, form, onEvent, signal)
+  },
+  testVerification(userId, photo, onEvent, signal) {
+    const form = new FormData()
+    form.set('profileId', userId)
+    form.set('photo', photo, 'palm.jpg')
+    return palmAttempt('/palm-lock/test', form, onEvent, signal)
+  },
+  palmLockInfo: () => call<PalmLockInfo>('GET', '/palm-lock'),
+  listActivity: (profileId) => call<Attempt[]>('GET', `/activity${profileId ? `?profileId=${encodeURIComponent(profileId)}` : ''}`),
 
   validatePhoto(side, photo, options) {
     const form = new FormData()
@@ -136,5 +201,5 @@ export const httpApi: Api = {
   deleteConversation: (id) => call<DeleteSummary>('DELETE', `/conversations/${encodeURIComponent(id)}`),
 
   exportData: () => call<ExportBundle>('GET', '/account/export'),
-  deleteAllData: () => call<DeleteSummary>('DELETE', '/account/data'),
+  deleteAllData: (password) => call<DeleteSummary>('DELETE', '/account/data', password ? { password } : undefined),
 }

@@ -14,9 +14,9 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 
 
-async def read_form(request: Request) -> FormData:
+async def read_form(request: Request, max_files: int = 4, max_fields: int = 8) -> FormData:
     try:
-        return await request.form(max_files=4, max_fields=8)
+        return await request.form(max_files=max_files, max_fields=max_fields)
     except StarletteHTTPException as exc:
         # a broken or oversized multipart body
         raise ApiError('invalid', 'That upload could not be read. Please choose the photo again and try again.') from exc

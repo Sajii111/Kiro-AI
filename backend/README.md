@@ -13,6 +13,7 @@ python scripts/serve.py            # installs and builds what is missing, then s
 python scripts/smoke.py            # in a second window: checks the running server from the outside
 python scripts/smoke.py --expect-real   # the same, and it fails unless the server really reads photos
 python scripts/contact_sheet.py    # draws what the analysis finds in your own test photos (run.bat sheet on Windows)
+python scripts/palm_pilot.py       # the palm lock (ICA 02) on your own photos, one folder per person (run.bat palm on Windows)
 python scripts/check_gemini.py     # tests the Gemini key and setup with made-up hands (run.bat gemini on Windows)
 python scripts/check_firebase.py   # tests the Firebase key and the online database with one test document (run.bat firebase)
 python scripts/live_report.py ../test-photos/person1   # a report for your own photos, each passage labelled (run.bat live)

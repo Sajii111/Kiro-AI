@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { PROFILE_LOCKED_EVENT } from '../api/errors'
 import { BRAND } from '../brand'
 import Logo from '../components/Logo'
 import SoundToggle from '../components/SoundToggle'
@@ -7,20 +9,47 @@ import Avatar from '../components/ui/Avatar'
 import PlanetAvatar from '../components/ui/PlanetAvatar'
 import Icon, { type IconName } from '../components/ui/icons'
 import Menu from '../components/ui/Menu'
-import { useData } from '../state/data'
+import { UNLOCK_NEEDED_EVENT, useData } from '../state/data'
 import { useSession } from '../state/session'
 import { useUi } from '../state/ui'
 import { DISCLAIMER_SHORT } from './copy'
 import GuestBanner from './GuestBanner'
 import ImportOffer from './ImportOffer'
 
-type NavItem = { to: string; label: string; /** shorter, for the phone's bottom bar */ short: string; icon: IconName; end?: boolean }
+type NavItem = { to: string; label: string; /** shorter, for the phone's bottom bar */ short: string; icon: IconName; end?: boolean; /** shown in the top bar only on extra-wide screens */ xlOnly?: boolean }
 
-function ProfileSwitcher() {
-  const { profiles, activeProfile, setActiveProfileId } = useData()
+/** Takes the person to a profile's unlock screen when a locked profile is chosen, or when the open one locked itself again. */
+function UnlockRouter() {
   const navigate = useNavigate()
   const location = useLocation()
-  if (!profiles || profiles.length === 0) return null
+  useEffect(() => {
+    const go = (e: Event) => {
+      const id = (e as CustomEvent<string | null>).detail
+      if (!id || location.pathname.startsWith('/app/unlock/')) return
+      // after unlocking, come back here, unless "here" belongs to another profile (a reading, a chat)
+      const back = location.pathname.startsWith('/app/readings/') || location.pathname === '/app/chat' ? '/app' : `${location.pathname}${location.search}`
+      navigate(`/app/unlock/${encodeURIComponent(id)}?next=${encodeURIComponent(back)}`)
+    }
+    window.addEventListener(UNLOCK_NEEDED_EVENT, go)
+    window.addEventListener(PROFILE_LOCKED_EVENT, go)
+    return () => {
+      window.removeEventListener(UNLOCK_NEEDED_EVENT, go)
+      window.removeEventListener(PROFILE_LOCKED_EVENT, go)
+    }
+  }, [navigate, location.pathname, location.search])
+  return null
+}
+
+function ProfileSwitcher() {
+  const { profiles, activeProfile, setActiveProfileId, leaveProfile } = useData()
+  const navigate = useNavigate()
+  const location = useLocation()
+  // the chip shows which profile the app is inside; on the picker there is none yet
+  if (!profiles || profiles.length === 0 || !activeProfile) return null
+  const leave = async (close: () => void) => {
+    close()
+    if (await leaveProfile()) navigate('/app')
+  }
 
   return (
     <Menu
@@ -28,7 +57,8 @@ function ProfileSwitcher() {
       button={
         <span className="flex h-10 items-center gap-1.5 rounded-full border border-ink/20 bg-surface/70 pl-1 pr-2.5 text-sm backdrop-blur transition-colors hover:border-accent">
           <PlanetAvatar seed={activeProfile?.id ?? '?'} size={32} />
-          <span className="max-w-[5.5rem] truncate sm:max-w-28">{activeProfile?.name}</span>
+          <span className="max-w-[5.5rem] truncate sm:max-w-28">{activeProfile?.name ?? 'Choose a profile'}</span>
+          {activeProfile?.lock && <Icon name="shield" size={13} className="text-detected" />}
           <Icon name="chevron-down" size={14} className="text-muted" />
         </span>
       }
@@ -57,17 +87,23 @@ function ProfileSwitcher() {
                   <PlanetAvatar seed={p.id} size={34} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{p.name}</span>
-                    <span className="block text-xs text-muted">{p.owner === 'self' ? 'My hands' : 'Shared with permission'}</span>
+                    <span className="block text-xs text-muted">{p.locked ? 'Locked: unlock with the palm' : p.owner === 'self' ? 'My hands' : 'Shared with permission'}</span>
                   </span>
+                  {p.locked && <Icon name="shield" size={16} className="text-muted" />}
                   {p.id === activeProfile?.id && <Icon name="check" size={16} className="text-accent-ink" />}
                 </button>
               </li>
             ))}
           </ul>
           <div className="mt-1 border-t border-ink/10 pt-1">
-            <Link to="/app" onClick={close} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-ink/5">
-              <Icon name="user" size={16} /> Manage profiles
-            </Link>
+            {activeProfile.lock && (
+              <button type="button" onClick={() => leave(close)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-ink/5">
+                <Icon name="shield" size={16} /> Lock {activeProfile.name} now
+              </button>
+            )}
+            <button type="button" onClick={() => leave(close)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-ink/5">
+              <Icon name="user" size={16} /> All profiles
+            </button>
           </div>
         </>
       )}
@@ -78,6 +114,7 @@ function ProfileSwitcher() {
 function AccountMenu() {
   const { session, signOut } = useSession()
   const navigate = useNavigate()
+  const { activeProfile } = useData()
   if (!session) return null
   const guest = session.kind === 'guest'
 
@@ -94,6 +131,14 @@ function AccountMenu() {
           </div>
           <Link to="/app/settings" onClick={close} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-ink/5">
             <Icon name="sliders" size={16} /> Settings
+          </Link>
+          {activeProfile && (
+            <Link to="/app/security" onClick={close} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-ink/5">
+              <Icon name="shield" size={16} /> Security of {activeProfile.name}
+            </Link>
+          )}
+          <Link to="/app/palm-lab" onClick={close} className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-ink/5">
+            <Icon name="hand" size={16} /> Palm lab
           </Link>
           <button
             type="button"
@@ -119,13 +164,22 @@ export default function AppShell() {
   const location = useLocation()
   const guest = session?.kind === 'guest'
 
-  const nav: NavItem[] = [
-    { to: '/app', label: 'Dashboard', short: 'Dashboard', icon: 'dashboard', end: true },
-    { to: '/app/new', label: 'New reading', short: 'New', icon: 'plus' },
-    { to: '/app/chat', label: 'Chat', short: 'Chat', icon: 'chat' },
-    { to: '/app/history', label: guest ? 'This session' : 'History', short: guest ? 'Session' : 'History', icon: 'clock' },
-    { to: '/app/settings', label: 'Settings', short: 'Settings', icon: 'sliders' },
-  ]
+  const { activeProfile } = useData()
+  const settings: NavItem = { to: '/app/settings', label: 'Settings', short: 'Settings', icon: 'sliders' }
+  const security: NavItem = { to: '/app/security', label: 'Security', short: 'Security', icon: 'shield' }
+  const lab: NavItem = { to: '/app/palm-lab', label: 'Palm lab', short: 'Lab', icon: 'hand' }
+  // Inside a profile: that profile's pages. Before one is chosen: the profile picker and the account's own pages.
+  const nav: NavItem[] = activeProfile
+    ? [
+        { to: '/app', label: 'Home', short: 'Home', icon: 'dashboard', end: true },
+        { to: '/app/new', label: 'New reading', short: 'New', icon: 'plus' },
+        { to: '/app/chat', label: 'Chat', short: 'Chat', icon: 'chat' },
+        { to: '/app/history', label: guest ? 'This session' : 'History', short: guest ? 'Session' : 'History', icon: 'clock' },
+        settings,
+      ]
+    : [{ to: '/app', label: 'Profiles', short: 'Profiles', icon: 'user', end: true }, lab, settings]
+  // on wide screens the palm lock's two pages sit in the bar too (on phones they are in the account menu)
+  const wide: NavItem[] = activeProfile ? [...nav.slice(0, 4), { ...security, xlOnly: true }, { ...lab, xlOnly: true }, settings] : nav
 
   return (
     <div className="app-bg flex min-h-screen flex-col">
@@ -139,14 +193,16 @@ export default function AppShell() {
             <Logo />
           </Link>
           <nav className="ml-3 hidden items-center gap-1 lg:flex" aria-label="App">
-            {nav.map((item) => (
+            {wide.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) => `inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${isActive ? 'bg-ink text-paper' : 'text-ink/75 hover:bg-ink/5 hover:text-ink'}`}
+                className={({ isActive }) =>
+                  `${item.xlOnly ? 'hidden xl:inline-flex' : 'inline-flex'} items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${isActive ? 'bg-ink text-paper' : 'text-ink/75 hover:bg-ink/5 hover:text-ink'}`
+                }
               >
-                <Icon name={item.icon} size={16} className="hidden xl:block" />
+                <Icon name={item.icon} size={16} className="hidden 2xl:block" />
                 {item.label}
               </NavLink>
             ))}
@@ -162,6 +218,7 @@ export default function AppShell() {
         </div>
       </header>
       <GuestBanner />
+      <UnlockRouter />
 
       <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-5 pb-28 pt-8 md:px-8 md:pt-12 lg:pb-16">
         <div key={location.pathname} className="page-in">
@@ -171,7 +228,7 @@ export default function AppShell() {
 
       <footer className="mx-auto hidden w-full max-w-7xl px-8 pb-24 text-xs text-muted md:block lg:pb-8">{DISCLAIMER_SHORT}</footer>
 
-      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-ink/10 bg-paper/90 backdrop-blur-md lg:hidden">
+      <nav aria-label="App" className="fixed inset-x-0 bottom-0 z-40 grid border-t border-ink/10 bg-paper/90 backdrop-blur-md lg:hidden" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
         {nav.map((item) => (
           <NavLink
             key={item.to}

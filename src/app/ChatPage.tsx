@@ -157,8 +157,9 @@ function ReadingData({ reading, profile, newest, onChange }: { reading: Reading;
 // ------------------------------------------------------------------ the picker
 
 function PickerBody({ currentReadingId, currentProfileId, onClose, onPick }: { currentReadingId: string | null; currentProfileId: string | null; onClose: () => void; onPick: (r: ReadingSummary) => void }) {
-  const { profiles } = useData()
-  const [profileId, setProfileId] = useState<string | null>(currentProfileId ?? profiles?.[0]?.id ?? null)
+  const { profiles, activeProfile } = useData()
+  // inside one profile, a chat talks about one of that profile's readings
+  const profileId = activeProfile?.id ?? currentProfileId
   const [choice, setChoice] = useState<string | null>(null)
   const group = useId()
   const list = useResource(() => (profileId ? api.listReadings(profileId) : Promise.resolve([] as ReadingSummary[])), [profileId])
@@ -171,27 +172,7 @@ function PickerBody({ currentReadingId, currentProfileId, onClose, onPick }: { c
 
   return (
     <>
-      {profiles && profiles.length > 1 && (
-        <div role="group" aria-label="Whose reading" className="flex flex-wrap gap-2">
-          {profiles.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              aria-pressed={p.id === profileId}
-              onClick={() => {
-                setProfileId(p.id)
-                setChoice(null)
-              }}
-              className={`inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 text-sm transition-colors ${p.id === profileId ? 'border-ink bg-accent/15' : 'border-ink/20 hover:border-ink/40'}`}
-            >
-              <PlanetAvatar seed={p.id} size={26} /> {p.name}
-              <span className="text-muted">{p.readingCount}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className={profiles && profiles.length > 1 ? 'mt-4' : ''}>
+      <div>
         {list.error ? (
           <p role="alert" className="text-sm text-danger">
             {list.error}

@@ -44,6 +44,16 @@ def never_reach_google(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def drawn_hand_calibration(monkeypatch):
+    """The tests use drawn hands, so they use a fixed calibration made on drawn hands (tests/data/calibration-drawn.json), not the
+    shipped backend/app/cv/biometric/calibration.json: `run.bat palm --calibrate` rewrites that one with real-hand numbers, which
+    would make every drawn impostor score as a match."""
+    from app.cv.biometric import match
+
+    monkeypatch.setattr(match, 'CALIBRATION_PATH', Path(__file__).resolve().parent / 'data' / 'calibration-drawn.json')
+
+
+@pytest.fixture(autouse=True)
 def never_wait_to_retry(monkeypatch):
     """A call that repeats after a temporary Gemini failure waits a few seconds in real life; in a test it must not wait at all."""
     from app.llm import gemini

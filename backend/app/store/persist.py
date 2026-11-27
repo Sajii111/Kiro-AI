@@ -20,6 +20,9 @@ What is saved, one document each (see `docs/API_CONTRACT.md`, "Where the data is
     users/{userId}/readings/{readingId}    one reading: the findings, the report, how it was made. NEVER a photo.
     users/{userId}/conversations/{id}      one chat: which reading it is about, its title, how many messages
     users/{userId}/conversations/{id}/messages/{messageId}   one chat message
+    users/{userId}/locks/{profileId}       one palm lock: the side, when, and the template SEALED with the server's key
+                                           (encrypted features of the enrolment photos; never a photo)
+    users/{userId}/attempts/{attemptId}    one line of the attempt log: outcome, score, threshold, time. Never a photo.
 
 Each document carries a few plain fields that are easy to read in the Firebase console (names, dates, which profile) and
 the whole object as JSON in `data`, because a reading holds lists of points, which Firestore cannot store as nested lists.
@@ -41,7 +44,14 @@ from collections.abc import Iterable
 from typing import Protocol
 
 from app.core.clock import now_ms
-from app.schemas import Conversation, Message, Reading, StoredProfile
+from app.schemas import (
+    Attempt,
+    Conversation,
+    Message,
+    Reading,
+    StoredLock,
+    StoredProfile,
+)
 from app.store.memory import Account, Bucket, MemoryStore, SignIn
 
 log = logging.getLogger('kiro.store')
@@ -142,6 +152,17 @@ def message_doc(m: Message) -> dict:
     return {'role': m.role, 'createdAt': m.createdAt, 'data': as_json(m)}
 
 
+def lock_doc(k: StoredLock) -> dict:
+    return {'profileId': k.profileId, 'side': k.side, 'createdAt': k.createdAt, 'data': as_json(k)}
+
+
+def attempt_doc(a: Attempt) -> dict:
+    doc = {'profileId': a.profileId, 'kind': a.kind, 'at': a.at, 'data': as_json(a)}
+    if a.outcome:
+        doc['outcome'] = a.outcome
+    return doc
+
+
 def message_order(m: Message) -> tuple[str, bool]:
     """Oldest first; a question before its answer if they ever share a millisecond."""
     return m.createdAt, m.role != 'user'
@@ -161,15 +182,28 @@ def bucket_docs(user_id: str, bucket: Bucket) -> dict[str, dict]:
     for m in bucket.messages:
         if m.conversationId in known:  # a message whose chat is gone is never saved (and is deleted with it)
             docs[f'{base}/conversations/{m.conversationId}/messages/{m.id}'] = message_doc(m)
+    for k in bucket.locks:
+        docs[f'{base}/locks/{k.profileId}'] = lock_doc(k)
+    for a in bucket.attempts:
+        docs[f'{base}/attempts/{a.id}'] = attempt_doc(a)
     return docs
 
 
-def bucket_from(profiles: Iterable[dict], readings: Iterable[dict], conversations: Iterable[dict], messages: Iterable[dict]) -> Bucket:
+def bucket_from(
+    profiles: Iterable[dict],
+    readings: Iterable[dict],
+    conversations: Iterable[dict],
+    messages: Iterable[dict],
+    locks: Iterable[dict] = (),
+    attempts: Iterable[dict] = (),
+) -> Bucket:
     bucket = Bucket()
     bucket.profiles = sorted((StoredProfile.model_validate_json(f['data']) for f in profiles), key=lambda p: p.createdAt)
     bucket.readings = sorted((Reading.model_validate_json(f['data']) for f in readings), key=lambda r: r.createdAt)
     bucket.conversations = sorted((Conversation.model_validate_json(f['data']) for f in conversations), key=lambda c: c.createdAt)
     bucket.messages = sorted((Message.model_validate_json(f['data']) for f in messages), key=message_order)
+    bucket.locks = sorted((StoredLock.model_validate_json(f['data']) for f in locks), key=lambda k: k.createdAt)
+    bucket.attempts = sorted((Attempt.model_validate_json(f['data']) for f in attempts), key=lambda a: a.at)
     return bucket
 
 
@@ -244,8 +278,8 @@ class PersistentStore(MemoryStore):
             return bucket
         base = f'users/{user_id}'
         found: dict[str, dict] = {}  # path -> fields, for every document the account has
-        kinds: dict[str, list[dict]] = {'profiles': [], 'readings': [], 'conversations': [], 'messages': []}
-        collections = [(f'{base}/{kind}', kind) for kind in ('profiles', 'readings', 'conversations')]
+        kinds: dict[str, list[dict]] = {'profiles': [], 'readings': [], 'conversations': [], 'messages': [], 'locks': [], 'attempts': []}
+        collections = [(f'{base}/{kind}', kind) for kind in ('profiles', 'readings', 'conversations', 'locks', 'attempts')]
         while collections:  # each chat's messages are listed once the chat itself has been found
             collection, kind = collections.pop(0)
             for doc_id, fields in self.backend.list(collection):
@@ -253,7 +287,7 @@ class PersistentStore(MemoryStore):
                 kinds[kind].append(fields)
                 if kind == 'conversations':
                     collections.append((f'{collection}/{doc_id}/messages', 'messages'))
-        bucket = bucket_from(kinds['profiles'], kinds['readings'], kinds['conversations'], kinds['messages'])
+        bucket = bucket_from(kinds['profiles'], kinds['readings'], kinds['conversations'], kinds['messages'], kinds['locks'], kinds['attempts'])
         account = self.backend.get(base) or {}
         bucket.model_replies = int(account.get('modelReplies', 0) or 0)
         self._saved_replies[user_id] = bucket.model_replies

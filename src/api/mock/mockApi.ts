@@ -12,24 +12,29 @@ import { PROFILE_NAME_MAX, MESSAGE_MAX, cleanReadingName, validateProfileName, v
 import { ApiError } from '../errors'
 import type {
   Api,
+  Attempt,
+  AttemptKind,
   Conversation,
   ConversationWithMessages,
   DeleteSummary,
   HandProfile,
   HandSide,
   ImageStageKey,
+  PalmResult,
   ProcessingEvent,
   Reading,
   ReadingSummary,
   StageKey,
+  UnlockEvent,
 } from '../types'
-import { currentDisplayName, expireGuestNow, mockAuth } from './auth'
-import { postMessage, toProfile } from './convo'
+import { currentDisplayName, expireGuestNow, mockAuth, passwordMatches } from './auth'
+import { MOCK_ENGINE, postMessage, toProfile } from './convo'
+import { compare, fingerprint, MOCK_THRESHOLD, outcomeOf, photoProblem, stepPictures } from './palm'
 import { countStatuses } from '../../lib/readings'
 import { headlineFor } from './generate'
 import { buildValidation, measurePhoto, qualityFrom } from './measure'
 import { loadSampleData, makeReading } from './samples'
-import { clearScope, countsOf, data, dropConversations, dropReadings, getScope, mutate, newId } from './store'
+import { clearScope, countsOf, data, dropConversations, dropReadings, getScope, mutate, newId, openProfileId, setOpenProfile, type MockLock, type StoreData } from './store'
 
 export const wait = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -100,6 +105,152 @@ function summaryOf(d: ReturnType<typeof data>, r: Reading): ReadingSummary {
   }
 }
 
+// ---------------------------------------------------------------- palm locks: what a session may reach
+
+const FAILURES = 5
+const WINDOW_MS = 10 * 60_000
+const LOCKOUT_MS = 5 * 60_000
+
+function lockOf(d: StoreData, profileId: string): MockLock | undefined {
+  return d.locks.find((k) => k.profileId === profileId)
+}
+
+function canReach(d: StoreData, profileId: string, openId = openProfileId()): boolean {
+  return !lockOf(d, profileId) || profileId === openId
+}
+
+function requireReach(profileId: string) {
+  const d = data()
+  if (!canReach(d, profileId)) {
+    const name = d.profiles.find((p) => p.id === profileId)?.name ?? 'This profile'
+    throw new ApiError('locked', `“${name}” is locked with a palm. Unlock it with its palm first.`, { profileId })
+  }
+}
+
+function logLine(d: StoreData, profileId: string, kind: AttemptKind, reason: string, extra: Partial<Attempt> = {}): Attempt {
+  const line: Attempt = {
+    id: newId('att'),
+    profileId,
+    profileName: d.profiles.find((p) => p.id === profileId)?.name ?? 'Unknown',
+    kind,
+    at: new Date().toISOString(),
+    reason,
+    engineVersion: MOCK_ENGINE,
+    ...extra,
+  }
+  d.attempts.push(line)
+  if (d.attempts.length > 500) d.attempts = d.attempts.slice(-500)
+  return line
+}
+
+function requirePassword(password: string | undefined) {
+  if (!password) throw new ApiError('forbidden', 'Type your account password to do this without the palm.')
+  if (!passwordMatches(password)) throw new ApiError('forbidden', 'That password is not right. Please try again.')
+}
+
+/** One palm attempt of the sample backend: the same steps and outcomes as the server's, from thumbnails. */
+async function mockAttempt(profileId: string, photo: Blob, kind: 'unlock' | 'test', onEvent: (e: UnlockEvent) => void, signal?: AbortSignal): Promise<PalmResult> {
+  const d = data()
+  const profile = find.profile(profileId)
+  const lock = lockOf(d, profileId)
+  if (!lock) throw new ApiError('invalid', `“${profile.name}” has no palm lock, so there is nothing to compare the photo with.`)
+  if (lock.lockedUntil && lock.lockedUntil > Date.now()) {
+    const minutes = Math.max(1, Math.round((lock.lockedUntil - Date.now()) / 60_000))
+    throw new ApiError('locked_out', `Too many palm attempts failed on this profile, so it is locked for now. Try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.`, { lockedUntil: lock.lockedUntil, profileId })
+  }
+  const t0 = performance.now()
+  const step = (stage: UnlockEvent['stage'], state: UnlockEvent['state'], detail?: string, preview?: string) =>
+    onEvent({ stage, state, ...(detail ? { detail } : {}), ...(preview ? { preview } : {}), ms: Math.round(performance.now() - t0) })
+
+  step('checks', 'running')
+  const problem = await photoProblem(photo, lock.side)
+  await wait(400, signal)
+  let outcome: PalmResult['outcome']
+  let score: number | undefined
+  let best: number | undefined
+  let corr = 0
+  if (problem) {
+    step('checks', 'failed', problem)
+    outcome = 'invalid_image'
+  } else {
+    const pictures = await stepPictures(photo)
+    step('checks', 'done', `The photo passed the checks (sample backend: the hand side is taken on trust)`)
+    for (const [stage, detail] of [
+      ['roi', 'The middle of the photo (the server cuts the square from the palm itself)'],
+      ['prep', 'Grey, lightly blurred, contrast evened out'],
+      ['features', 'A stand-in picture: the server draws its crease map and competitive code here'],
+    ] as const) {
+      step(stage, 'running')
+      await wait(450, signal)
+      step(stage, 'done', detail, pictures[stage])
+    }
+    step('match', 'running')
+    await wait(450, signal)
+    const found = compare(lock.prints, await fingerprint(photo))
+    score = Math.round(found.score * 10000) / 10000
+    best = found.best
+    corr = found.corr
+    outcome = outcomeOf(score)
+    step('match', outcome === 'success' ? 'done' : 'failed', `Score ${score.toFixed(2)} against the threshold ${MOCK_THRESHOLD.toFixed(2)}`)
+  }
+  const durationMs = Math.round(performance.now() - t0)
+  const reason =
+    outcome === 'invalid_image'
+      ? problem!
+      : outcome === 'success'
+        ? `The palm matched: score ${score!.toFixed(2)} reached the threshold ${MOCK_THRESHOLD.toFixed(2)}.`
+        : `The palm did not match: score ${score!.toFixed(2)} is below the threshold ${MOCK_THRESHOLD.toFixed(2)}.`
+  const methods: Record<string, number> = score === undefined ? {} : { crease: score, compcode: score }
+  return mutate((dd) => {
+    const k = lockOf(dd, profileId)!
+    const line = logLine(dd, profileId, kind, reason, {
+      outcome,
+      ...(score !== undefined ? { score, threshold: MOCK_THRESHOLD, methods } : { threshold: MOCK_THRESHOLD }),
+      ...(outcome === 'invalid_image' ? { problem: 'photo_checks' } : {}),
+      hand: k.side,
+      durationMs,
+      calibrated: false,
+    })
+    let lockedUntil: number | undefined
+    if (outcome === 'failed') {
+      const now = Date.now()
+      let since = Math.max(now - WINDOW_MS, k.lockedUntil ?? 0)
+      const lastWin = [...dd.attempts].reverse().find((a) => a.profileId === profileId && (a.kind === 'unlock' || a.kind === 'test') && a.outcome === 'success')
+      if (lastWin) since = Math.max(since, Date.parse(lastWin.at) + 1)
+      const fails = dd.attempts.filter((a) => a.profileId === profileId && (a.kind === 'unlock' || a.kind === 'test') && a.outcome === 'failed' && Date.parse(a.at) >= since).length
+      if (fails >= FAILURES) lockedUntil = k.lockedUntil = now + LOCKOUT_MS
+    }
+    let opened = false
+    if (outcome === 'success') {
+      delete k.lockedUntil
+      if (kind === 'unlock') {
+        setOpenProfile(profileId)
+        opened = true
+      }
+    }
+    return {
+      attemptId: line.id,
+      profileId,
+      outcome,
+      title: outcome === 'success' ? 'Authentication Successful' : outcome === 'failed' ? 'Authentication Failed' : 'Invalid Image',
+      ...(score !== undefined ? { score } : {}),
+      threshold: MOCK_THRESHOLD,
+      methods,
+      raw: (score === undefined ? {} : { crease: corr, compcode: corr, lbp: corr }) as Record<string, number>,
+      reason,
+      ...(outcome === 'invalid_image' ? { problem: 'photo_checks' } : {}),
+      hand: k.side,
+      durationMs,
+      at: line.at,
+      calibrated: false,
+      engineVersion: MOCK_ENGINE,
+      opened,
+      ...(best !== undefined ? { bestSample: best } : {}),
+      ...(lockedUntil ? { lockedUntil } : {}),
+    }
+  })
+}
+
 function checkName(name: string, ignoreId?: string) {
   const bad = validateProfileName(name)
   if (bad) throw new ApiError('invalid', bad)
@@ -138,6 +289,7 @@ export const mockApi: Api = {
   async renameProfile(id, name) {
     await wait(LATENCY)
     find.profile(id)
+    requireReach(id)
     checkName(name, id)
     return mutate((d) => {
       const p = d.profiles.find((x) => x.id === id)!
@@ -146,15 +298,108 @@ export const mockApi: Api = {
     })
   },
 
-  async deleteProfile(id) {
+  async deleteProfile(id, password) {
     await wait(LATENCY)
     find.profile(id)
+    const openId = openProfileId()
+    if (lockOf(data(), id) && openId !== id) requirePassword(password)
     return mutate((d) => {
+      if (lockOf(d, id)) logLine(d, id, 'profile_deleted', `Locked profile deleted ${openId === id ? 'while it was open' : 'with the account password'}.`, { via: openId === id ? 'palm' : 'password' })
       const readingIds = new Set(d.readings.filter((r) => r.profileId === id).map((r) => r.id))
       const gone = dropReadings(d, readingIds)
       d.profiles = d.profiles.filter((p) => p.id !== id)
+      d.locks = d.locks.filter((k) => k.profileId !== id)
+      if (openId === id) setOpenProfile(null)
       return { profiles: 1, ...gone }
     })
+  },
+
+  // ---------------------------------------------------------------- palm locks
+  async openProfile(id) {
+    await wait(LATENCY)
+    find.profile(id)
+    requireReach(id)
+    setOpenProfile(id)
+    const d = data()
+    return toProfile(d, d.profiles.find((p) => p.id === id)!, id)
+  },
+
+  async closeProfile() {
+    await wait(LATENCY)
+    setOpenProfile(null)
+  },
+
+  async lockProfile(id, input) {
+    await wait(LATENCY)
+    if (getScope()?.kind !== 'user') throw new ApiError('forbidden', 'Create an account or sign in to lock a profile with a palm. A guest session is temporary, and its lock would go with it.')
+    const profile = find.profile(id)
+    requireReach(id)
+    if (!input.consent) throw new ApiError('invalid', `Please confirm that ${profile.owner === 'self' ? 'you agree' : `${profile.name} has agreed`} to their palm being used as a lock. Only encrypted numbers are kept, never the photos.`)
+    if (input.photos.length < 3 || input.photos.length > 5) throw new ApiError('invalid', `Locking a profile takes 3 to 5 photos of the same palm. ${input.photos.length} were sent.`)
+    const problems = (await Promise.all(input.photos.map((b) => photoProblem(b, input.side)))).flatMap((message, index) => (message ? [{ index, code: 'photo_checks', message }] : []))
+    if (problems.length) throw new ApiError('invalid', `${problems.length} of the photos could not be used for the lock. Take ${problems.length === 1 ? 'it' : 'them'} again and try once more.`, { photos: problems })
+    const prints = await Promise.all(input.photos.map(fingerprint))
+    await wait(900)
+    return mutate((d) => {
+      const replaced = !!lockOf(d, id)
+      d.locks = d.locks.filter((k) => k.profileId !== id)
+      d.locks.push({ profileId: id, side: input.side, createdAt: new Date().toISOString(), samples: prints.length, prints })
+      logLine(d, id, replaced ? 'lock_replaced' : 'lock_added', `Palm lock ${replaced ? 'replaced' : 'set up'} with ${prints.length} photos of the ${input.side} hand.`, { hand: input.side, calibrated: false })
+      setOpenProfile(id)
+      return toProfile(d, d.profiles.find((p) => p.id === id)!, id)
+    })
+  },
+
+  async removeLock(id, password) {
+    await wait(LATENCY)
+    const profile = find.profile(id)
+    if (!lockOf(data(), id)) throw new ApiError('invalid', `“${profile.name}” has no palm lock to take off.`)
+    const isOpen = openProfileId() === id
+    if (!isOpen) requirePassword(password)
+    return mutate((d) => {
+      d.locks = d.locks.filter((k) => k.profileId !== id)
+      logLine(d, id, 'lock_removed', `Palm lock taken off ${isOpen ? 'while the profile was open' : 'with the account password'}.`, { via: isOpen ? 'palm' : 'password' })
+      return toProfile(d, d.profiles.find((p) => p.id === id)!)
+    })
+  },
+
+  unlockProfile(id, photo, onEvent, signal) {
+    return mockAttempt(id, photo, 'unlock', onEvent, signal)
+  },
+
+  async testVerification(userId, photo, onEvent, signal) {
+    const id = userId.trim()
+    if (!id) throw new ApiError('invalid', 'Type the user ID of the profile to test against.')
+    if (!data().profiles.some((p) => p.id === id)) {
+      throw new ApiError('not_found', `There is no hand profile with the user ID “${id.slice(0, 60)}” in this account, so nothing was compared. Check the ID shown on the profile's palm lock.`)
+    }
+    return mockAttempt(id, photo, 'test', onEvent, signal)
+  },
+
+  async palmLockInfo() {
+    await wait(LATENCY)
+    return {
+      available: true,
+      note: 'This is the sample backend: it compares tiny thumbnails of the photos, not palms. Start the real server to try the palm lock itself.',
+      engineVersion: MOCK_ENGINE,
+      configHash: 'sample',
+      calibrated: false,
+      threshold: MOCK_THRESHOLD,
+      calibrationSource: 'a fixed number in the sample backend',
+      measured: {},
+      methods: [
+        { id: 'crease', name: 'Crease map', weight: 0.5, description: 'On the server: where the creases run, compared as maps and direction histograms.' },
+        { id: 'compcode', name: 'Competitive code', weight: 0.5, description: 'On the server: the strongest line direction in each block, from six Gabor filters.' },
+        { id: 'lbp', name: 'Local binary patterns (spare)', weight: 0, description: 'On the server: skin texture histograms, shown for comparison only.' },
+      ],
+      policy: { failures: FAILURES, windowMinutes: 10, lockoutMinutes: 5, idleMinutes: 15, enrolMin: 3, enrolMax: 5 },
+      roiSize: 128,
+    }
+  },
+
+  async listActivity(profileId) {
+    await wait(LATENCY)
+    return [...data().attempts].reverse().filter((a) => !profileId || a.profileId === profileId)
   },
 
   // ---------------------------------------------------------------- photos and readings
@@ -165,6 +410,7 @@ export const mockApi: Api = {
 
   async createReading(input, onEvent, signal) {
     find.profile(input.profileId)
+    requireReach(input.profileId)
     // the name is checked before any photo is looked at, as the server does
     const nameProblem = validateReadingName(input.name ?? '')
     if (nameProblem) throw new ApiError('invalid', nameProblem)
@@ -242,18 +488,22 @@ export const mockApi: Api = {
   async listReadings(profileId) {
     await wait(LATENCY)
     const d = data()
-    const summaries: ReadingSummary[] = d.readings.filter((r) => !profileId || r.profileId === profileId).map((r) => summaryOf(d, r))
+    if (profileId) requireReach(profileId)
+    const openId = openProfileId()
+    const summaries: ReadingSummary[] = d.readings.filter((r) => (!profileId || r.profileId === profileId) && canReach(d, r.profileId, openId)).map((r) => summaryOf(d, r))
     return summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   },
 
   async getReading(id): Promise<Reading> {
     await wait(LATENCY)
-    return find.reading(id)
+    const r = find.reading(id)
+    requireReach(r.profileId)
+    return r
   },
 
   async renameReading(id, name) {
     await wait(LATENCY)
-    find.reading(id)
+    requireReach(find.reading(id).profileId)
     const bad = validateReadingName(name)
     if (bad) throw new ApiError('invalid', bad)
     return mutate((d) => {
@@ -267,21 +517,25 @@ export const mockApi: Api = {
 
   async deleteReading(id) {
     await wait(LATENCY)
-    find.reading(id)
+    requireReach(find.reading(id).profileId)
     return mutate((d) => ({ ...none, ...dropReadings(d, new Set([id])) }))
   },
 
   // ---------------------------------------------------------------- chat
   async listConversations(filter) {
     await wait(LATENCY)
-    return data()
-      .conversations.filter((c) => (!filter?.readingId || c.readingId === filter.readingId) && (!filter?.profileId || c.profileId === filter.profileId))
+    const d = data()
+    if (filter?.profileId) requireReach(filter.profileId)
+    const openId = openProfileId()
+    return d.conversations
+      .filter((c) => (!filter?.readingId || c.readingId === filter.readingId) && (!filter?.profileId || c.profileId === filter.profileId) && canReach(d, c.profileId, openId))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   },
 
   async createConversation(readingId): Promise<Conversation> {
     await wait(LATENCY)
     const reading = find.reading(readingId)
+    requireReach(reading.profileId)
     const now = new Date().toISOString()
     return mutate((d) => {
       const c: Conversation = { id: newId('cnv'), readingId, profileId: reading.profileId, title: 'New chat', createdAt: now, updatedAt: now, messageCount: 0 }
@@ -293,6 +547,7 @@ export const mockApi: Api = {
   async getConversation(id): Promise<ConversationWithMessages> {
     await wait(LATENCY)
     const c = find.conversation(id)
+    requireReach(c.profileId)
     return { ...c, messages: data().messages.filter((m) => m.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)) }
   },
 
@@ -300,14 +555,14 @@ export const mockApi: Api = {
     const clean = text.trim()
     if (!clean) throw new ApiError('invalid', 'Please type a question first.')
     if (clean.length > MESSAGE_MAX) throw new ApiError('invalid', `Please keep your question under ${MESSAGE_MAX} characters.`)
-    find.conversation(conversationId)
+    requireReach(find.conversation(conversationId).profileId)
     await wait(650 + Math.round(Math.random() * 500))
     return mutate((d) => postMessage(d, conversationId, clean))
   },
 
   async deleteConversation(id) {
     await wait(LATENCY)
-    find.conversation(id)
+    requireReach(find.conversation(id).profileId)
     return mutate((d) => ({ ...none, ...dropConversations(d, new Set([id])) }))
   },
 
@@ -315,20 +570,25 @@ export const mockApi: Api = {
   async exportData() {
     await wait(LATENCY)
     const d = data()
+    const openId = openProfileId()
     return {
       exportedAt: new Date().toISOString(),
-      profiles: d.profiles.map((p) => toProfile(d, p)),
-      readings: d.readings,
-      conversations: d.conversations.map((c) => ({ ...c, messages: d.messages.filter((m) => m.conversationId === c.id) })),
+      profiles: d.profiles.map((p) => toProfile(d, p, openId)),
+      readings: d.readings.filter((r) => canReach(d, r.profileId, openId)),
+      conversations: d.conversations.filter((c) => canReach(d, c.profileId, openId)).map((c) => ({ ...c, messages: d.messages.filter((m) => m.conversationId === c.id) })),
     }
   },
 
-  async deleteAllData() {
+  async deleteAllData(password) {
     await wait(LATENCY)
     const scope = getScope()
     if (!scope) throw new ApiError('unauthorised', 'Please sign in first.')
-    const counts = countsOf(data())
+    const d = data()
+    const openId = openProfileId()
+    if (d.profiles.some((p) => !canReach(d, p.id, openId))) requirePassword(password)
+    const counts = countsOf(d)
     clearScope(scope)
+    setOpenProfile(null)
     return counts
   },
 

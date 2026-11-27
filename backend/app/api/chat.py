@@ -16,6 +16,7 @@ from app.core.security import new_id
 from app.deps import json_response, require_caller, still_alive, store_of
 from app.llm.chat import ChatContext
 from app.llm.chat_llm import respond
+from app.locks import can_reach, current_open, require_reach
 from app.schemas import (
     Conversation,
     ConversationWithMessages,
@@ -33,22 +34,31 @@ TITLE_MAX = 48
 
 @router.get('/conversations')
 async def list_conversations(request: Request, readingId: str | None = None, profileId: str | None = None):
-    """Most recently updated first. Both filters are optional."""
-    bucket = require_caller(request).bucket
+    """Most recently updated first. Both filters are optional. Chats of a locked profile are left out (and asking for them by
+    their profile or reading is refused)."""
+    caller = require_caller(request)
+    bucket = caller.bucket
+    open_id = current_open(request, caller)
+    if profileId:
+        require_reach(bucket, profileId, open_id)
+    if readingId and (reading := bucket.reading(readingId)):
+        require_reach(bucket, reading.profileId, open_id)
     rows = [
         c
         for c in reversed(bucket.conversations)
-        if (not readingId or c.readingId == readingId) and (not profileId or c.profileId == profileId)
+        if (not readingId or c.readingId == readingId) and (not profileId or c.profileId == profileId) and can_reach(bucket, c.profileId, open_id)
     ]
     return json_response(sorted(rows, key=lambda c: c.updatedAt, reverse=True))
 
 
 @router.post('/readings/{reading_id}/conversations')
 async def create_conversation(reading_id: str, request: Request):
-    bucket = require_caller(request).bucket
+    caller = require_caller(request)
+    bucket = caller.bucket
     reading = bucket.reading(reading_id)
     if not reading:
         raise not_found('reading')
+    require_reach(bucket, reading.profileId, current_open(request, caller))
     now = iso()
     convo = Conversation(id=new_id('cnv'), readingId=reading.id, profileId=reading.profileId, title='New chat', createdAt=now, updatedAt=now, messageCount=0)
     bucket.conversations.append(convo)
@@ -57,10 +67,12 @@ async def create_conversation(reading_id: str, request: Request):
 
 @router.get('/conversations/{conversation_id}')
 async def get_conversation(conversation_id: str, request: Request):
-    bucket = require_caller(request).bucket
+    caller = require_caller(request)
+    bucket = caller.bucket
     convo = bucket.conversation(conversation_id)
     if not convo:
         raise not_found('chat')
+    require_reach(bucket, convo.profileId, current_open(request, caller))
     return json_response(ConversationWithMessages(**convo.model_dump(), messages=bucket.messages_of(conversation_id)))
 
 
@@ -71,6 +83,8 @@ async def send_message(conversation_id: str, body: SendMessageInput, request: Re
     convo = bucket.conversation(conversation_id)
     if not convo:
         raise not_found('chat')
+    open_id = current_open(request, caller)
+    require_reach(bucket, convo.profileId, open_id)
     text = body.text.strip()
     if not text:
         raise ApiError('invalid', 'Please type a question first.')
@@ -83,8 +97,8 @@ async def send_message(conversation_id: str, body: SendMessageInput, request: Re
 
     context = ChatContext(
         reading=reading,
-        profile=bucket.as_profile(profile),
-        other_profiles=[bucket.as_profile(p) for p in bucket.profiles if p.id != profile.id],
+        profile=bucket.as_profile(profile, open_id),
+        other_profiles=[bucket.as_profile(p, open_id) for p in bucket.profiles if p.id != profile.id],
         history=bucket.messages_of(conversation_id),
     )
     # Gemini may take a while to answer, so this runs in a worker thread: the server keeps answering other people meanwhile.
@@ -124,8 +138,11 @@ async def send_message(conversation_id: str, body: SendMessageInput, request: Re
 
 @router.delete('/conversations/{conversation_id}')
 async def delete_conversation(conversation_id: str, request: Request):
-    bucket = require_caller(request).bucket
-    if not bucket.conversation(conversation_id):
+    caller = require_caller(request)
+    bucket = caller.bucket
+    convo = bucket.conversation(conversation_id)
+    if not convo:
         raise not_found('chat')
+    require_reach(bucket, convo.profileId, current_open(request, caller))
     conversations, messages = bucket.drop_conversations({conversation_id})
     return json_response(DataCounts(profiles=0, readings=0, conversations=conversations, messages=messages))

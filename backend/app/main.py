@@ -26,13 +26,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.formparsers import MultiPartParser
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.api import account, chat, photos, profiles, readings, session
+from app.api import account, chat, locks, photos, profiles, readings, session
 from app.core.config import Settings, read_settings
 from app.core.errors import ApiError
 from app.cv.hand import HandFinder, build_finder
 from app.llm.gemini import ModelService, service_from_settings
+from app.locks import PalmService
 from app.store.build import build_store
-from app.store.persist import StorageUnavailable
+from app.store.persist import PersistentStore, StorageUnavailable
 
 log = logging.getLogger('kiro')
 
@@ -164,9 +165,9 @@ class SaveAfterChanges:
 # ------------------------------------------------------------------ errors, always in the one body the website reads
 
 
-def error_response(code: str, message: str, status: int, headers: dict[str, str] | None = None) -> JSONResponse:
+def error_response(code: str, message: str, status: int, headers: dict[str, str] | None = None, extra: dict | None = None) -> JSONResponse:
     return JSONResponse(
-        {'error': {'code': code, 'message': message}},
+        {'error': {'code': code, 'message': message, **(extra or {})}},
         status_code=status,
         headers={'Cache-Control': 'no-store', **(headers or {})},
     )
@@ -193,7 +194,7 @@ def friendly_validation_message(exc: RequestValidationError) -> str:
 def add_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def api_error(_: Request, exc: ApiError):
-        return error_response(exc.code, exc.message, exc.status, exc.headers)
+        return error_response(exc.code, exc.message, exc.status, exc.headers, exc.extra)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, exc: RequestValidationError):
@@ -328,6 +329,7 @@ def create_app(settings: Settings | None = None, finder: HandFinder | None = Non
     app.state.finder = finder
     app.state.llm = llm
     app.state.store = build_store(settings)
+    app.state.palm = PalmService(settings, persistent=isinstance(app.state.store, PersistentStore))
     app.state.reading_slots = asyncio.Semaphore(MAX_PARALLEL_READINGS)
 
     app.add_middleware(SaveAfterChanges)
@@ -335,7 +337,7 @@ def create_app(settings: Settings | None = None, finder: HandFinder | None = Non
     app.add_middleware(SecurityHeaders)
     add_error_handlers(app)
 
-    for module in (session, profiles, photos, readings, chat, account):
+    for module in (session, locks, profiles, photos, readings, chat, account):
         app.include_router(module.router, prefix='/v1')
 
     @app.api_route('/v1/{rest:path}', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], include_in_schema=False)

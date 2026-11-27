@@ -41,6 +41,7 @@ from app.deps import (
 )
 from app.llm.gemini import ModelService
 from app.llm.report import count_statuses, headline_for
+from app.locks import can_reach, current_open, require_reach
 from app.schemas import (
     DataCounts,
     ProcessingEvent,
@@ -114,6 +115,8 @@ async def stream_reading(
             log.exception('reading failed')
             post('crash', exc)
 
+    # while this runs, the session cannot switch to another profile (the reading belongs to this one)
+    store.busy[caller.session_key] = store.busy.get(caller.session_key, 0) + 1
     try:
         async with slots:
             future = loop.run_in_executor(None, work)
@@ -154,6 +157,11 @@ async def stream_reading(
     finally:
         # runs on a normal end, on an error, and when the browser disconnects: either way the worker stops
         cancel.set()
+        left = store.busy.get(caller.session_key, 0) - 1
+        if left > 0:
+            store.busy[caller.session_key] = left
+        else:
+            store.busy.pop(caller.session_key, None)
 
 
 def reading_name_in(form: FormData) -> str | None:
@@ -180,6 +188,7 @@ async def create_reading(request: Request):
         profile_id = str(form.get('profileId') or '')
         if not profile_id or not caller.bucket.profile(profile_id):
             raise not_found('hand profile')
+        require_reach(caller.bucket, profile_id, current_open(request, caller))
         name = reading_name_in(form)  # said before any photo is looked at, so a bad name costs nothing
         raw = {side: await take_photo(form, side, side, settings) for side in ('left', 'right')}
         samples = {side: flag(form, f'{side}Sample') for side in ('left', 'right')}
@@ -225,28 +234,41 @@ def summary_of(bucket: Bucket, r: Reading, names: dict[str, str]) -> ReadingSumm
 
 @router.get('/readings')
 async def list_readings(request: Request, profileId: str | None = None):
-    """Newest first. A profile can hold any number of readings; the first item is its newest."""
-    bucket = require_caller(request).bucket
+    """Newest first. A profile can hold any number of readings; the first item is its newest. Readings of a locked profile
+    are left out (and asking for one by its profile is refused)."""
+    caller = require_caller(request)
+    bucket = caller.bucket
+    open_id = current_open(request, caller)
+    if profileId:
+        require_reach(bucket, profileId, open_id)
     names = {p.id: p.name for p in bucket.profiles}
-    rows = [summary_of(bucket, r, names) for r in reversed(bucket.readings) if not profileId or r.profileId == profileId]
+    rows = [
+        summary_of(bucket, r, names)
+        for r in reversed(bucket.readings)
+        if (not profileId or r.profileId == profileId) and can_reach(bucket, r.profileId, open_id)
+    ]
     return json_response(sorted(rows, key=lambda s: s.createdAt, reverse=True))
 
 
 @router.get('/readings/{reading_id}')
 async def get_reading(reading_id: str, request: Request):
-    reading = require_caller(request).bucket.reading(reading_id)
+    caller = require_caller(request)
+    reading = caller.bucket.reading(reading_id)
     if not reading:
         raise not_found('reading')
+    require_reach(caller.bucket, reading.profileId, current_open(request, caller))
     return json_response(reading)
 
 
 @router.patch('/readings/{reading_id}')
 async def rename_reading(reading_id: str, body: RenameReadingInput, request: Request):
     """Gives a reading a new name, or takes its name away when the new one is empty. Answers with the row a list would show."""
-    bucket = require_caller(request).bucket
+    caller = require_caller(request)
+    bucket = caller.bucket
     reading = bucket.reading(reading_id)
     if not reading:
         raise not_found('reading')
+    require_reach(bucket, reading.profileId, current_open(request, caller))
     problem = validate_reading_name(body.name)
     if problem:
         raise ApiError('invalid', problem)
@@ -256,8 +278,11 @@ async def rename_reading(reading_id: str, body: RenameReadingInput, request: Req
 
 @router.delete('/readings/{reading_id}')
 async def delete_reading(reading_id: str, request: Request):
-    bucket = require_caller(request).bucket
-    if not bucket.reading(reading_id):
+    caller = require_caller(request)
+    bucket = caller.bucket
+    reading = bucket.reading(reading_id)
+    if not reading:
         raise not_found('reading')
+    require_reach(bucket, reading.profileId, current_open(request, caller))
     readings, conversations, messages = bucket.drop_readings({reading_id})
     return json_response(DataCounts(profiles=0, readings=readings, conversations=conversations, messages=messages))

@@ -13,6 +13,8 @@ rem    run.bat --rebuild       build the website again
 rem    run.bat smoke           check a running server (start it in another window first)
 rem    run.bat models          download the hand model that the image analysis needs
 rem    run.bat sheet           draw what the analysis finds in the photos in ..\test-photos (pictures go to ..\debug)
+rem    run.bat palm            try the palm lock on the photos in ..\palm-photos, one folder per person (pictures go to ..\debug\palm)
+rem    run.bat palmeval        measure the palm lock on the class dataset in ..\palm-dataset (P01\1.jpg ... 7.jpg): FAR, FRR, accuracy, a confusion matrix (report goes to ..\debug\palm-eval)
 rem    run.bat gemini          check the Gemini key and model, report and chat (also: --probe, --list-models, --quick)
 rem    run.bat firebase        check the online database: the key in backend\secrets, one test write, read and delete
 rem    run.bat live            a real report for the photos in ..\test-photos\person1, written with Gemini (run.bat live person2)
@@ -49,6 +51,8 @@ if not defined PY (
 if /i "%~1"=="smoke" goto :smoke
 if /i "%~1"=="models" goto :models
 if /i "%~1"=="sheet" goto :sheet
+if /i "%~1"=="palm" goto :palm
+if /i "%~1"=="palmeval" goto :palmeval
 if /i "%~1"=="gemini" goto :gemini
 if /i "%~1"=="firebase" goto :firebase
 if /i "%~1"=="live" goto :live
@@ -91,6 +95,36 @@ if not exist "backend\.venv\Scripts\python.exe" (
     exit /b 1
 )
 "backend\.venv\Scripts\python.exe" scripts\contact_sheet.py %2 %3 %4 %5
+set "CODE=%errorlevel%"
+echo.
+pause
+exit /b %CODE%
+
+:palm
+rem The palm lock pilot (ICA 02). Like the contact sheet, it runs inside the private environment.
+if not exist "backend\.venv\Scripts\python.exe" (
+    echo.
+    echo   The private environment is not there yet. Run  run.bat  once first, wait until the server starts, then close it.
+    echo.
+    pause
+    exit /b 1
+)
+"backend\.venv\Scripts\python.exe" scripts\palm_pilot.py %2 %3 %4 %5
+set "CODE=%errorlevel%"
+echo.
+pause
+exit /b %CODE%
+
+:palmeval
+rem The palm lock evaluation (ICA 02): the numbers for the report. Same private environment as the pilot.
+if not exist "backend\.venv\Scripts\python.exe" (
+    echo.
+    echo   The private environment is not there yet. Run  run.bat  once first, wait until the server starts, then close it.
+    echo.
+    pause
+    exit /b 1
+)
+"backend\.venv\Scripts\python.exe" scripts\palm_evaluate.py %2 %3 %4 %5 %6 %7
 set "CODE=%errorlevel%"
 echo.
 pause

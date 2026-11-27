@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import type { Conversation, HandProfile, ReadingSummary } from '../api/types'
+import type { Conversation, ReadingSummary } from '../api/types'
 import StatusDot from '../components/StatusDot'
 import Icon from '../components/ui/icons'
 import { formatDate, plural, relativeDay } from '../lib/format'
@@ -13,26 +13,6 @@ import { DeleteChatModal, DeleteReadingModal } from './ReadingModals'
 
 // Everything that has been made, in one place: readings and chats, newest first, with a filter per profile and a
 // delete button on each. For a guest this is "this session": temporary, and it says so.
-
-function ProfileFilter({ profiles, value, onChange }: { profiles: HandProfile[]; value: string; onChange: (id: string) => void }) {
-  if (profiles.length < 2) return null
-  const options = [{ id: 'all', name: 'All profiles' }, ...profiles.map((p) => ({ id: p.id, name: p.name }))]
-  return (
-    <div role="group" aria-label="Show one profile or all" className="flex flex-wrap gap-2">
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          aria-pressed={value === o.id}
-          onClick={() => onChange(o.id)}
-          className={`rounded-full border px-4 py-2 text-sm transition-colors ${value === o.id ? 'border-ink bg-ink text-paper' : 'border-ink/20 hover:border-ink/40'}`}
-        >
-          {o.name}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 function ReadingEntry({ reading, onDelete }: { reading: ReadingSummary; onDelete: () => void }) {
   const when = formatDate(reading.createdAt)
@@ -110,25 +90,23 @@ function Skeleton({ rows }: { rows: number }) {
 
 export default function History() {
   const { session } = useSession()
-  const { profiles } = useData()
+  const { profiles, activeProfile } = useData()
   const guest = session?.kind === 'guest'
-  const [filter, setFilter] = useState('all')
   const [deletingReading, setDeletingReading] = useState<ReadingSummary | null>(null)
   const [deletingChat, setDeletingChat] = useState<Conversation | null>(null)
 
-  // load again whenever a profile or its readings come or go
+  // inside one profile, the history is that profile's: load again whenever its readings come or go
+  const profileId = activeProfile?.id ?? ''
   const signature = profiles?.map((p) => `${p.id}:${p.readingCount}`).join(',') ?? 'loading'
-  const readings = useResource(() => api.listReadings(), [signature])
-  const chats = useResource(() => api.listConversations(), [signature])
+  const readings = useResource(() => (profileId ? api.listReadings(profileId) : Promise.resolve([] as ReadingSummary[])), [profileId, signature])
+  const chats = useResource(() => (profileId ? api.listConversations({ profileId }) : Promise.resolve([] as Conversation[])), [profileId, signature])
   const reloadAll = () => {
     readings.reload()
     chats.reload()
   }
 
-  // a profile that has been deleted cannot stay selected
-  const activeFilter = filter === 'all' || profiles?.some((p) => p.id === filter) ? filter : 'all'
-  const shownReadings = readings.data?.filter((r) => activeFilter === 'all' || r.profileId === activeFilter)
-  const shownChats = chats.data?.filter((c) => activeFilter === 'all' || c.profileId === activeFilter)
+  const shownReadings = readings.data
+  const shownChats = chats.data
   const nameOf = (id: string) => profiles?.find((p) => p.id === id)?.name ?? 'Someone'
   /** which reading a chat is about, in words: its name when it has one, otherwise its date */
   const aboutReading = (id: string) => {
@@ -140,11 +118,11 @@ export default function History() {
     <div className="space-y-12">
       <header>
         <p className="kicker">{guest ? 'Guest session' : 'History'}</p>
-        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{guest ? 'This session' : 'Everything you have made'}</h1>
+        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{guest ? 'This session' : `Everything for ${activeProfile?.name ?? 'this profile'}`}</h1>
         <p className="mt-3 max-w-xl text-muted">
           {guest
-            ? 'Readings and chats from this guest session. They are temporary: when the session ends they are deleted, so this is not saved history.'
-            : 'Every reading and chat, newest first. You can open any of them, or delete the ones you no longer want.'}
+            ? `${activeProfile?.name ?? 'This profile'}’s readings and chats from this guest session. They are temporary: when the session ends they are deleted, so this is not saved history.`
+            : `Every reading and chat of ${activeProfile?.name ?? 'this profile'}, newest first. You can open any of them, or delete the ones you no longer want. Other profiles keep their own history.`}
         </p>
         {guest && (
           <Link to="/signin" state={{ mode: 'signup', from: '/app/history' }} className="btn btn-ghost btn-sm mt-5">
@@ -152,8 +130,6 @@ export default function History() {
           </Link>
         )}
       </header>
-
-      {profiles && <ProfileFilter profiles={profiles} value={activeFilter} onChange={setFilter} />}
 
       <section aria-labelledby="history-readings">
         <h2 id="history-readings" className="mb-5 font-display text-2xl font-normal">
@@ -168,7 +144,7 @@ export default function History() {
         ) : shownReadings.length === 0 ? (
           <div className="card flex flex-wrap items-center justify-between gap-4 p-8">
             <div>
-              <h3 className="font-display text-xl font-normal">No readings {activeFilter === 'all' ? 'yet' : `for ${nameOf(activeFilter)} yet`}</h3>
+              <h3 className="font-display text-xl font-normal">No readings for {nameOf(profileId)} yet</h3>
               <p className="mt-1 text-sm text-muted">Upload a clear photo of each palm and the reading appears here.</p>
             </div>
             <Link to="/app/new" className="btn btn-primary">
@@ -197,7 +173,7 @@ export default function History() {
           <Skeleton rows={1} />
         ) : shownChats.length === 0 ? (
           <div className="card p-8">
-            <h3 className="font-display text-xl font-normal">No chats {activeFilter === 'all' ? 'yet' : `for ${nameOf(activeFilter)} yet`}</h3>
+            <h3 className="font-display text-xl font-normal">No chats for {nameOf(profileId)} yet</h3>
             <p className="mt-1 text-sm text-muted">Open a reading and ask a question. Each chat belongs to one reading and never mixes with another.</p>
           </div>
         ) : (

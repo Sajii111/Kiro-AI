@@ -7,8 +7,14 @@ from fastapi import APIRouter, Request
 from app.core.clock import iso
 from app.core.errors import ApiError, not_found
 from app.core.security import new_id
-from app.deps import json_response, require_caller, settings_of
-from app.schemas import NewProfileInput, RenameProfileInput, StoredProfile
+from app.deps import json_response, require_caller, settings_of, store_of
+from app.locks import current_open, log_event, require_reach, set_open
+from app.schemas import (
+    NewProfileInput,
+    PasswordInput,
+    RenameProfileInput,
+    StoredProfile,
+)
 from app.store.memory import Bucket
 from app.validation import PROFILE_NAME_MAX, validate_profile_name
 
@@ -26,14 +32,17 @@ def check_name(bucket: Bucket, name: str, ignore_id: str | None = None) -> None:
 
 @router.get('/profiles')
 async def list_profiles(request: Request):
-    """Every profile of the caller, oldest first."""
-    bucket = require_caller(request).bucket
-    return json_response(sorted((bucket.as_profile(p) for p in bucket.profiles), key=lambda p: p.createdAt))
+    """Every profile of the caller, oldest first. A locked profile is listed (its name and its lock) without its counts."""
+    caller = require_caller(request)
+    bucket = caller.bucket
+    open_id = current_open(request, caller)
+    return json_response(sorted((bucket.as_profile(p, open_id) for p in bucket.profiles), key=lambda p: p.createdAt))
 
 
 @router.post('/profiles')
 async def create_profile(body: NewProfileInput, request: Request):
-    bucket = require_caller(request).bucket
+    caller = require_caller(request)
+    bucket = caller.bucket
     check_name(bucket, body.name)
     if body.owner == 'other' and not body.consent:
         raise ApiError('invalid', 'Please confirm that this person has agreed to you uploading their palms.')
@@ -48,24 +57,40 @@ async def create_profile(body: NewProfileInput, request: Request):
         createdAt=iso(),
     )
     bucket.profiles.append(profile)
-    return json_response(bucket.as_profile(profile), status=201)
+    return json_response(bucket.as_profile(profile, current_open(request, caller)), status=201)
 
 
 @router.patch('/profiles/{profile_id}')
 async def rename_profile(profile_id: str, body: RenameProfileInput, request: Request):
-    bucket = require_caller(request).bucket
+    caller = require_caller(request)
+    bucket = caller.bucket
     profile = bucket.profile(profile_id)
     if not profile:
         raise not_found('hand profile')
+    open_id = current_open(request, caller)
+    require_reach(bucket, profile_id, open_id)
     check_name(bucket, body.name, ignore_id=profile_id)
     profile.name = body.name.strip()[:PROFILE_NAME_MAX]
-    return json_response(bucket.as_profile(profile))
+    return json_response(bucket.as_profile(profile, open_id))
 
 
 @router.delete('/profiles/{profile_id}')
-async def delete_profile(profile_id: str, request: Request):
-    """Cascades: the profile, its readings, their conversations and every message in them."""
-    bucket = require_caller(request).bucket
-    if not bucket.profile(profile_id):
+async def delete_profile(profile_id: str, request: Request, body: PasswordInput | None = None):
+    """Cascades: the profile, its readings, their conversations and every message in them, and its palm lock. A locked
+    profile is deleted only while it is open (its palm was shown) or with the account password."""
+    from app.api.locks import (
+        check_password,  # here, so the two route files do not import each other at load time
+    )
+
+    caller = require_caller(request)
+    bucket = caller.bucket
+    profile = bucket.profile(profile_id)
+    if not profile:
         raise not_found('hand profile')
+    open_id = current_open(request, caller)
+    if bucket.lock_of(profile_id) is not None:
+        via = 'palm' if open_id == profile_id else await check_password(caller, (body.password if body else '').strip())
+        log_event(bucket, profile, 'profile_deleted', 'Locked profile deleted' + (' while it was open.' if via == 'palm' else ' with the account password.'), via=via)
+    if open_id == profile_id:
+        set_open(store_of(request), caller, None)
     return json_response(bucket.drop_profile(profile_id))

@@ -126,6 +126,13 @@ class Settings:
     firebase_key_json: str = field(default='', repr=False)
     #: which of the project's Firestore databases: "(default)" unless it was given its own name when it was created
     firestore_database: str = '(default)'
+    #: the key that seals palm-lock templates (Fernet, 44 characters). Empty: with the online database the server keeps one in
+    #: `palm_key_file` (made on the first start); with memory-only storage a fresh one is made at every start, which is enough
+    #: because the locks go when the server stops anyway.
+    palm_key: str = field(default='', repr=False)
+    palm_key_file: Path = BACKEND_DIR / 'secrets' / 'palm-template.key'
+    #: an unlocked profile locks itself again after this many minutes without a request
+    palm_idle_minutes: int = 15
 
     @property
     def max_request_bytes(self) -> int:
@@ -177,6 +184,7 @@ def read_settings() -> Settings:
     storage = os.environ.get('STORAGE', 'auto').strip().lower()
     firebase_key = os.environ.get('FIREBASE_KEY', '').strip()
     database = os.environ.get('FIRESTORE_DATABASE', '').strip()
+    palm_file = os.environ.get('PALM_KEY_FILE', '').strip()
     return Settings(
         env=env,
         host=os.environ.get('HOST', '127.0.0.1').strip() or '127.0.0.1',
@@ -203,4 +211,7 @@ def read_settings() -> Settings:
         firebase_key=Path(firebase_key) if firebase_key else BACKEND_DIR / 'secrets' / 'firebase-service-account.json',
         firebase_key_json=os.environ.get('FIREBASE_KEY_JSON', '').strip(),
         firestore_database=database or '(default)',
+        palm_key=os.environ.get('PALM_TEMPLATE_KEY', '').strip(),
+        palm_key_file=Path(palm_file) if palm_file else BACKEND_DIR / 'secrets' / 'palm-template.key',
+        palm_idle_minutes=max(1, _int('PALM_IDLE_MINUTES', 15)),
     )

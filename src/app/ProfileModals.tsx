@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { errorMessage } from '../api/errors'
 import type { HandProfile } from '../api/types'
@@ -12,6 +13,7 @@ import { plural } from '../lib/format'
 import { useResource } from '../lib/useResource'
 import { PROFILE_NAME_MAX, validateProfileName } from '../lib/validate'
 import { useData } from '../state/data'
+import { useSession } from '../state/session'
 import { CONSENT_NOTE } from './copy'
 
 // Create, rename and delete a hand profile. Used on the dashboard and inside the new-reading flow.
@@ -29,7 +31,11 @@ export function CreateProfileModal({ open, onClose, onCreated }: CreateProps) {
 
 function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCreated?: (profile: HandProfile) => void; onBusy: (busy: boolean) => void }) {
   const { refresh, setActiveProfileId, profiles } = useData()
+  const { session } = useSession()
+  const navigate = useNavigate()
   const toast = useToast()
+  const canLock = session?.kind === 'user'
+  const [lockNext, setLockNext] = useState(false)
   const [name, setName] = useState('')
   const [owner, setOwner] = useState<'self' | 'other'>(profiles && profiles.length === 0 ? 'self' : 'other')
   const [consent, setConsent] = useState(false)
@@ -61,6 +67,7 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
       onCreated?.(created)
       setBusy(false)
       onClose()
+      if (canLock && lockNext) navigate(`/app/lock/${created.id}`)
     } catch (err) {
       setFormError(errorMessage(err))
       setBusy(false)
@@ -107,6 +114,16 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
         </label>
       )}
 
+      {canLock && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-ink/15 p-4 text-sm">
+          <input type="checkbox" checked={lockNext} onChange={(e) => setLockNext(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--accent-ink)]" />
+          <span>
+            <strong className="font-medium">Lock it with a palm</strong> (optional)
+            <span className="mt-1 block text-xs text-muted">Its readings and chats then open only after the palm is shown. You can also add a lock later.</span>
+          </span>
+        </label>
+      )}
+
       {formError && (
         <p role="alert" className="flex items-start gap-2 text-sm text-danger">
           <Icon name="alert" className="mt-0.5" /> {formError}
@@ -118,7 +135,7 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
           Cancel
         </button>
         <button type="submit" disabled={busy} className="btn btn-primary">
-          {busy && <Spinner />} Add profile
+          {busy && <Spinner />} {canLock && lockNext ? 'Add, then lock' : 'Add profile'}
         </button>
       </div>
     </form>
@@ -184,7 +201,9 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
   const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const readings = useResource(() => api.listReadings(profile.id), [profile.id])
+  const [password, setPassword] = useState('')
+  // a locked profile's readings stay hidden, so they are not counted (asking for them would only be refused)
+  const readings = useResource(() => (profile.locked ? Promise.resolve(null) : api.listReadings(profile.id)), [profile.id, profile.locked])
 
   const chats = readings.data?.reduce((n, r) => n + r.conversationCount, 0)
 
@@ -192,7 +211,7 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
     setBusy(true)
     setError(null)
     try {
-      const gone = await api.deleteProfile(profile.id)
+      const gone = await api.deleteProfile(profile.id, profile.locked ? password : undefined)
       refresh()
       toast(`Deleted ${profile.name}: ${plural(gone.readings, 'reading')}, ${plural(gone.conversations, 'chat')} and ${plural(gone.messages, 'message')} removed.`)
       onClose()
@@ -209,18 +228,34 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
           <span>
-            {readings.loading || readings.data === undefined ? 'Counting…' : `${plural(readings.data.length, 'reading')}`} and their results and reports
+            {profile.locked ? 'All its readings' : readings.loading || !readings.data ? 'Counting…' : `${plural(readings.data.length, 'reading')}`} and their results and reports
           </span>
         </li>
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
-          <span>{chats === undefined ? 'Counting…' : `${plural(chats, 'chat')}`} with every message in them</span>
+          <span>{profile.locked ? 'All its chats' : chats === undefined ? 'Counting…' : `${plural(chats, 'chat')}`} with every message in them</span>
         </li>
+        {profile.lock && (
+          <li className="flex items-center gap-2">
+            <Icon name="trash" size={16} className="text-danger" />
+            <span>Its palm lock (the encrypted template)</span>
+          </li>
+        )}
         <li className="flex items-center gap-2 text-muted">
           <Icon name="check" size={16} />
           <span>Photos were never saved, so there is nothing else to remove.</span>
         </li>
       </ul>
+      {profile.locked && (
+        <TextField
+          label="Account password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          hint={`${profile.name} is locked, so your password stands in for the palm (or unlock it first). This is written to the attempt log.`}
+        />
+      )}
       {error && (
         <p role="alert" className="flex items-start gap-2 text-sm text-danger">
           <Icon name="alert" className="mt-0.5" /> {error}
@@ -230,7 +265,7 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
           Keep it
         </button>
-        <button type="button" onClick={remove} disabled={busy || readings.loading} className="btn btn-danger">
+        <button type="button" onClick={remove} disabled={busy || readings.loading || (profile.locked && !password)} className="btn btn-danger">
           {busy && <Spinner />} Delete {profile.name}
         </button>
       </div>

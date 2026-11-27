@@ -323,6 +323,10 @@ class CheckedPhoto:
     facts: HandFacts | None = None
     #: the person said this is one of the website's built-in sample drawings: judged by the simple check, never by the hand model
     sample: bool = False
+    #: how many hands the hand model found (0 without the model). The palm lock refuses a photo with two hands in it.
+    hand_count: int = 0
+    #: the size of the second-biggest hand divided by the biggest one's, 0 when there is only one
+    second_hand_ratio: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -462,9 +466,15 @@ def check_photo(data: bytes, side: HandSide, max_pixels: int, finder: HandFinder
     hand: FoundHand | None = None
     facts: HandFacts | None = None
     palm_ok: bool | None = None
+    hand_count = 0
+    second_hand_ratio = 0.0
     if finder is not None and not sample:
         analysis = working_copy(image, ANALYSIS_SIDE)
-        palm_check, hand, facts = palm_check_from_hands(finder.find(analysis), side, analysis.shape[1], analysis.shape[0])
+        hands = finder.find(analysis)
+        hand_count = len(hands)
+        if len(hands) > 1 and hands[0].size > 0:
+            second_hand_ratio = hands[1].size / hands[0].size
+        palm_check, hand, facts = palm_check_from_hands(hands, side, analysis.shape[1], analysis.shape[0])
         assert checks[-1].id == 'palm_visible'
         checks[-1] = palm_check
         palm_ok = palm_check.status != 'fail'
@@ -472,4 +482,5 @@ def check_photo(data: bytes, side: HandSide, max_pixels: int, finder: HandFinder
     quality = quality_from(checks, m, palm_ok)
     # the original is not needed again: keep only the working copies
     work = working_copy(image)
-    return done(width, height, checks, measures=m, quality=quality, work=work, analysis=analysis, hand=hand, facts=facts, sample=sample)
+    found = {'hand': hand, 'facts': facts, 'hand_count': hand_count, 'second_hand_ratio': second_hand_ratio}
+    return done(width, height, checks, measures=m, quality=quality, work=work, analysis=analysis, sample=sample, **found)

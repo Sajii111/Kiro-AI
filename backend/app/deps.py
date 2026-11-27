@@ -21,7 +21,14 @@ from pydantic import BaseModel
 from app.core.clock import now_ms
 from app.core.config import Settings
 from app.core.errors import ApiError
-from app.store.memory import Account, Bucket, GuestSession, MemoryStore
+from app.store.memory import (
+    Account,
+    Bucket,
+    GuestSession,
+    MemoryStore,
+    guest_key,
+    user_key,
+)
 
 COOKIE_USER = 'kiro_session'
 COOKIE_GUEST = 'kiro_guest'
@@ -35,6 +42,8 @@ class Caller:
     bucket: Bucket
     account: Account | None = None
     guest: GuestSession | None = None
+    #: this browser session, for what the server remembers about it in memory only (which profile is open)
+    session_key: str = ''
 
 
 def store_of(request: Request) -> MemoryStore:
@@ -48,13 +57,14 @@ def settings_of(request: Request) -> Settings:
 def require_caller(request: Request) -> Caller:
     """The caller of a route that needs a session. 401 when there is none, 410 when a guest session has ended."""
     store = store_of(request)
-    account = store.account_for(request.cookies.get(COOKIE_USER))
-    if account:
-        return Caller('user', store.bucket_of_user(account.id), account=account)
+    user_token = request.cookies.get(COOKIE_USER)
+    account = store.account_for(user_token)
+    if account and user_token:
+        return Caller('user', store.bucket_of_user(account.id), account=account, session_key=user_key(user_token))
     guest_token = request.cookies.get(COOKIE_GUEST)
     guest = store.guest_for(guest_token)
     if guest:
-        return Caller('guest', guest.bucket, guest=guest)
+        return Caller('guest', guest.bucket, guest=guest, session_key=guest_key(guest.id))
     if guest_token:
         raise ApiError('expired', 'Your guest session has ended and its data has been deleted. Please start again.')
     raise ApiError('unauthorised', 'Please sign in, or continue as a guest, to do that.')

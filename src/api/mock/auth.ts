@@ -7,7 +7,7 @@ import { hashString } from '../../lib/rand'
 import { validateDisplayName, validateEmail, validatePassword } from '../../lib/validate'
 import { ApiError } from '../errors'
 import type { AuthApi, DataCounts, RestoreResult, Session, UserInfo } from '../types'
-import { clearScope, countsOf, dataFor, mutateScope, newId, setScope, type Scope } from './store'
+import { clearScope, countsOf, dataFor, getScope, mutateScope, newId, setScope, type Scope } from './store'
 
 const USERS_KEY = 'kiro-mock-users'
 const SESSION_KEY = 'kiro-mock-session'
@@ -60,6 +60,14 @@ function expireGuestIfDue(): boolean {
     return true
   }
   return false
+}
+
+/** True when `password` is the password of the account signed in right now (the sample backend's check for a locked profile). */
+export function passwordMatches(password: string): boolean {
+  const scope = getScope()
+  if (!scope || scope.kind !== 'user') return false
+  const user = users().find((u) => u.id === scope.userId)
+  return !!user && user.secret === secretOf(user.email, password)
 }
 
 /** The signed-in person's display name, or null for a guest. No side effects. */

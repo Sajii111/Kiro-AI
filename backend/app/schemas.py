@@ -253,9 +253,26 @@ class StoredProfile(Model):
     createdAt: str
 
 
+class LockSummary(Model):
+    """What anyone signed in to the account may know about a profile's palm lock. Never the template itself."""
+
+    side: HandSide
+    createdAt: str
+    #: how many photos the lock was made from
+    samples: int
+    engineVersion: str
+
+
 class HandProfile(StoredProfile):
+    #: 0 and null while the profile is locked: how much it holds is the profile's own business
     readingCount: int
     lastReadingAt: str | None
+    #: the palm lock, or null when the profile has none
+    lock: LockSummary | None = None
+    #: True while the profile has a lock and is not open in this session: its readings and chats cannot be reached
+    locked: bool = False
+    #: True for the one profile open in this session (the one the website is working in)
+    open: bool = False
 
 
 class NewProfileInput(Model):
@@ -266,6 +283,148 @@ class NewProfileInput(Model):
 
 class RenameProfileInput(Model):
     name: str = Field(max_length=200)
+
+
+class PasswordInput(Model):
+    """The account password, for what a locked profile needs instead of its palm (taking the lock off, deleting it)."""
+
+    password: str = Field(default='', max_length=1000)
+
+
+# ------------------------------------------------------------------ palm locks
+
+PalmOutcome = Literal['success', 'failed', 'invalid_image']
+AttemptKind = Literal['unlock', 'test', 'lock_added', 'lock_replaced', 'lock_removed', 'profile_deleted']
+
+
+class StoredLock(Model):
+    """What is kept for a palm lock: the sealed template (encrypted, see app/cv/biometric/template.py) and a few plain facts."""
+
+    _omit_when_none = ('lockedUntil',)
+    profileId: str
+    side: HandSide
+    createdAt: str
+    samples: int
+    engineVersion: str
+    configHash: str
+    #: the Fernet token: the features of the enrolment photos, encrypted. Never a photo.
+    sealed: str
+    #: milliseconds since 1970: the profile refuses palm attempts until then (too many failures)
+    lockedUntil: int | None = None
+
+    def summary(self) -> LockSummary:
+        return LockSummary(side=self.side, createdAt=self.createdAt, samples=self.samples, engineVersion=self.engineVersion)
+
+
+class Attempt(Model):
+    """One line of the attempt log. Every palm attempt is written here, whatever its outcome, and so is every change to a lock.
+    It holds numbers and words only: never a photo, never a template."""
+
+    _omit_when_none = ('outcome', 'score', 'threshold', 'methods', 'hand', 'durationMs', 'calibrated', 'via', 'problem')
+    #: the attempt ID shown to the person (att_...)
+    id: str
+    #: the user ID of the brief: the hand profile the attempt was for
+    profileId: str
+    #: its name at the time, so the line still reads well after the profile is renamed or deleted
+    profileName: str
+    kind: AttemptKind
+    #: when, as an ISO time
+    at: str
+    outcome: PalmOutcome | None = None
+    score: float | None = None
+    threshold: float | None = None
+    #: each deciding method's normalised score (0 to 1)
+    methods: dict[str, float] | None = None
+    #: one plain sentence
+    reason: str
+    #: why the photo could not be judged (a short code), for an invalid image
+    problem: str | None = None
+    hand: HandSide | None = None
+    #: from the photo arriving to the decision
+    durationMs: int | None = None
+    engineVersion: str
+    #: False while the threshold is a placeholder, not yet measured on real photos
+    calibrated: bool | None = None
+    #: how a lock was taken off or a locked profile deleted: with its palm (it was open) or with the account password
+    via: Literal['palm', 'password'] | None = None
+
+
+UnlockStageKey = Literal['checks', 'roi', 'prep', 'features', 'match']
+
+
+class UnlockEvent(Model):
+    """One step of a palm attempt, as it happens."""
+
+    _omit_when_none = ('detail', 'preview', 'ms')
+    stage: UnlockStageKey
+    state: StageState
+    detail: str | None = None
+    #: a small picture of what the step made (a data: URL), for the person's own screen only
+    preview: str | None = None
+    #: how long the step took
+    ms: float | None = None
+
+
+class PalmResult(Model):
+    """The answer to a palm attempt: one of the three outcomes, with everything it was based on."""
+
+    _omit_when_none = ('score', 'problem', 'lockedUntil', 'bestSample')
+    attemptId: str
+    profileId: str
+    outcome: PalmOutcome
+    #: "Authentication Successful", "Authentication Failed" or "Invalid Image"
+    title: str
+    score: float | None = None
+    threshold: float
+    methods: dict[str, float]
+    #: every method's own similarity before normalising, the spare (LBP) included
+    raw: dict[str, float]
+    reason: str
+    problem: str | None = None
+    hand: HandSide
+    durationMs: int
+    at: str
+    calibrated: bool
+    engineVersion: str
+    #: True when this attempt opened the profile (a successful unlock; never a test)
+    opened: bool
+    bestSample: int | None = None
+    #: set when this failure locked the profile out: milliseconds since 1970
+    lockedUntil: int | None = None
+
+
+class PalmMethod(Model):
+    id: str
+    name: str
+    #: how much it counts in the fused score (0 for the spare)
+    weight: float
+    description: str
+
+
+class PalmPolicy(Model):
+    failures: int
+    windowMinutes: int
+    lockoutMinutes: int
+    idleMinutes: int
+    enrolMin: int
+    enrolMax: int
+
+
+class PalmLockInfo(Model):
+    """How the palm lock decides, for the Palm lab page. Read-only: the threshold changes only by calibrating."""
+
+    available: bool
+    #: why not, when it is not available
+    note: str | None
+    engineVersion: str
+    configHash: str
+    calibrated: bool
+    threshold: float
+    calibrationSource: str
+    measured: dict
+    methods: list[PalmMethod]
+    policy: PalmPolicy
+    roiSize: int
 
 
 class RenameReadingInput(Model):

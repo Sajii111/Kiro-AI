@@ -232,6 +232,7 @@ scripts/
   smoke.py            Checks a running server from the outside (run.bat smoke)
   fetch_models.py     Downloads the MediaPipe hand model into backend/models (run.bat models)
   contact_sheet.py    Draws what the analysis finds in your own test photos (run.bat sheet)
+  palm_pilot.py       Tries the palm lock (ICA 02) on a few people's photos and measures how well it tells them apart (run.bat palm)
   check_gemini.py     Tests the Gemini key and setup with made-up hands (run.bat gemini)
   check_firebase.py   Tests the Firebase key and the online database with one test document (run.bat firebase)
   live_report.py      Writes a report for your own photos, labelled passage by passage (run.bat live)
