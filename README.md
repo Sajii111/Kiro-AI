@@ -4,7 +4,8 @@
 
 This is the website for the Palmistry AI project (NIBM Digital Image Processing, ICA 01): a landing page, accounts and
 guest mode, hand profiles, the photo upload and processing flow, the annotated analysis, the report with a left-versus-right
-comparison, a chat about the reading, history, and settings with data controls.
+comparison, a chat about the reading, history, and settings with data controls. It also holds the second assessment, ICA 02:
+hand profiles can be locked with a palm and opened by palm verification (see [Palm lock (ICA 02)](#palm-lock-ica-02)).
 
 It runs in two ways. On its own, a built-in **sample backend** answers every request, so every screen works with no server
 (`npm run dev`). Or together with the **real FastAPI backend**, which lives in [`backend/`](backend/README.md) in this same
@@ -125,6 +126,83 @@ database, and no automated test can reach it. What each document holds is in
 [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md#9-where-the-data-is-kept); how the server keeps the database up to date, and what
 happens when it cannot be reached, is in [`backend/README.md`](backend/README.md#where-accounts-are-kept-memory-and-cloud-firestore).
 
+## Palm lock (ICA 02)
+
+The second assessment of the module, **Palm Biometric Authentication**, is built into this same website: any hand profile in an
+account can be **locked with a palm**. A locked profile opens only for the palm that locked it (1:1 verification), and until then
+its readings, chats and history stay out of sight. The image processing is classical OpenCV and NumPy written for this project;
+MediaPipe only finds the hand's landmarks, and no pretrained model makes the decision.
+
+### Using it
+
+1. **Sign in** (guests cannot lock a profile: a guest session is temporary, and its lock would go with it).
+2. **Lock a profile:** tick *Lock it with a palm* when you create a profile, or open a profile and go to **Security → Set up a lock**.
+   Choose the hand (left or right), give **3 to 5 photos** of that palm (upload, or **Camera** for a live picture with a hand outline
+   and a 3-second timer), and confirm consent. A profile for someone else needs their agreement.
+3. **Unlock it:** the app starts on a profile picker. Choosing a locked profile asks for one photo of its palm, then shows the steps
+   live (photo checks, the palm square, preparation, features, matching) and one of three outcomes: **Authentication Successful**,
+   **Authentication Failed** or **Invalid Image**, with the score, the threshold, each method's score, the time taken and the attempt ID.
+4. **Security** (inside an open profile) shows its lock with its **user ID**, and its attempt log. **Palm lab** shows how the lock
+   decides (the threshold read-only, the calibration, the methods, the rules) and **Test a verification**, which takes a typed user ID
+   and one photo. An ID that is not a profile of this account is refused in plain words, and nothing is compared.
+
+The camera needs `localhost` or https; elsewhere only Upload is offered (on a phone, the file picker still offers the camera).
+
+### How it decides
+
+| Step | What happens |
+| --- | --- |
+| Photo checks | The same checks as a reading (file type, size, sharpness, light), plus lock-only ones: the wrong hand, two hands or a tilted palm is an **Invalid Image** |
+| Region of interest | The four knuckles (index to little finger) set the direction and scale. A square of 0.9 knuckle spans, centred 0.75 spans below the knuckle line, is cut out at 128 × 128 px, and at least 95% of it must lie on the hand |
+| Preparation | Green channel, denoise, CLAHE (clip 2.0, 8 × 8 tiles), shading flattened, z-normalised. A square with too little detail is an Invalid Image |
+| Method A: crease map | Hessian valley filter at three scales, the strongest 12% kept as crease, small pieces dropped; compared by normalised correlation with small shifts, plus an 8 × 8 grid of crease directions |
+| Method B: competitive code | 6 Gabor orientations; the winning orientation per 4 px block; compared by angular distance with shifts of up to 2 blocks, weak blocks left out |
+| Spare: LBP | Local binary pattern histograms on a 4 × 4 grid. Measured and reported, but it does not decide |
+| Matching | Each method's score is rescaled (0 = typical different person, 1 = typical same person) and the two are averaged (weights 0.5 / 0.5). The photo is compared with every enrolment photo and the best match counts. At or above the threshold is Authentication Successful |
+
+**Enrolment** checks that the 3 to 5 photos agree with each other before the lock is made, so a bad set is refused rather than stored.
+The template holds only the extracted features, sealed with Fernet encryption, with the engine version and a fingerprint of every
+setting (`backend/app/cv/biometric/config.py`); a template made with other settings is refused as outdated instead of being misread.
+
+**The threshold is never set in the website.** It lives in `backend/app/cv/biometric/calibration.json` and is set from validation
+photos only (`run.bat palmeval --write-calibration`). Until at least 5 people have been measured, that file says `calibrated: false`
+and the app labels the threshold a placeholder.
+
+### Rules it keeps
+
+- **No photo is ever stored or logged.** A photo is used for one check and forgotten; the lock keeps only the sealed features.
+- **One open profile at a time,** per browser session. Every reading, chat, history and export route refuses a locked profile, and a
+  locked profile is listed without its counts. An open profile left alone for 15 minutes locks itself (`PALM_IDLE_MINUTES`).
+- **Lockout:** 5 Authentication Failed results within 10 minutes lock that profile out for 5 minutes. An Invalid Image does not
+  count, because nobody was refused: the photo was.
+- **Taking a lock off, deleting a locked profile or deleting all data** needs the palm (the profile open) or the account password.
+  A lock that can no longer be used (outdated, or an injured hand) can be taken off from the Unlock page with the password. It is logged.
+- **The attempt log** keeps the attempt ID, user ID, time, outcome, score, threshold, each method's score, duration, reason, hand
+  and engine version. Never a photo.
+- **The template key** comes from `PALM_TEMPLATE_KEY`, or else `backend\secrets\palm-template.key`, which the server makes on its
+  first start with the online database (Git ignores it and `run.bat package` refuses to pack it). With memory-only storage a fresh
+  key is made at every start, since the locks go when the server stops anyway. With Firestore, a lock is kept under
+  `users/{id}/locks/{profileId}` and each attempt under `users/{id}/attempts/{attemptId}`.
+
+### Measuring it
+
+Both commands need the hand model (`run.bat models`) and write outside the project, into `..\debug`, because they describe real palms.
+
+| Command | What it does |
+| --- | --- |
+| `run.bat palm` | A quick pilot on `..\palm-photos\<person>\*.jpg`: contact sheets showing the square on each palm, a score matrix, each method's separation (d′), a pretend lock per person and the equal error rate. `--sweep` tries the square at several heights; `--calibrate` writes what it measured into `calibration.json` (optimistic: the threshold is fitted on the same photos); `--drawn` uses drawn test hands. Output in `..\debug\palm` |
+| `run.bat palmeval` | The evaluation for the report, on a class dataset in `..\palm-dataset\P01\1.jpg … 7.jpg` (one pseudonym folder per person). Per person, photos 1–3 lock the palm, 4–5 set the threshold (validation only) and 6–7 test it. It reports, on the test photos only: trial counts, a confusion matrix, FAR and FRR with 95% intervals, accuracy with the test balance, mean latency per stage, each method alone and fused, the threshold moved, and the worst cases. Invalid Images are counted apart, and a zero denominator prints *not measurable*. `--enrol` and `--validate` change the split; `--write-calibration` writes the validation-only threshold into `calibration.json`. Output in `..\debug\palm-eval`: `palm_evaluation.txt`, `palm_attempts.csv`, `palm_scores.png` |
+
+Take photos 1–4 in one sitting and 5–7 in another (another day, or after the light has changed), so validation holds one of each
+and the test comes after the lock was made. **The photos are personal:** get each person's consent, keep them outside the project,
+never commit them, and delete them when the work is marked.
+
+**Where it stands:** the engine, the locks, the screens and the camera are built and tested (`backend/tests/test_biometric.py`,
+`test_locks.py`, `test_protocol.py`). A pilot on real photos of 2 people separated them fully, but 2 people say very little, and the
+threshold in `calibration.json` is a placeholder from that pilot until the class dataset has been measured with `run.bat palmeval`.
+The code lives in `backend/app/cv/biometric/` (the engine), `backend/app/locks.py` and `backend/app/api/locks.py` (the rules and
+routes), and `src/app/palm/` and `src/components/palm/` (the screens and the camera).
+
 ## Try it in two minutes
 
 1. Open the site. A loading screen draws a hand and counts up to 100%, then a film of about seven seconds plays: the hand lights up, a great wheel of the zodiac is drawn around it, and you fly through the wheel past a ringed planet and a turning galaxy, in streaks of stars, to land on the hero hand, so the landing page seems to open out of the film. A small **Skip** button sits at the bottom (Esc does the same) and plays the rest about four times as fast. Then scroll: the landing page is a journey through a night sky and a 3D world. Move the mouse as you go, and see [Things to touch on the landing page](#things-to-touch-on-the-landing-page) and [The opening, the music and moving between pages](#the-opening-the-music-and-moving-between-pages).
@@ -233,6 +311,7 @@ scripts/
   fetch_models.py     Downloads the MediaPipe hand model into backend/models (run.bat models)
   contact_sheet.py    Draws what the analysis finds in your own test photos (run.bat sheet)
   palm_pilot.py       Tries the palm lock (ICA 02) on a few people's photos and measures how well it tells them apart (run.bat palm)
+  palm_evaluate.py    The palm lock's evaluation on the class dataset: FAR, FRR, accuracy, a confusion matrix (run.bat palmeval)
   check_gemini.py     Tests the Gemini key and setup with made-up hands (run.bat gemini)
   check_firebase.py   Tests the Firebase key and the online database with one test document (run.bat firebase)
   live_report.py      Writes a report for your own photos, labelled passage by passage (run.bat live)
