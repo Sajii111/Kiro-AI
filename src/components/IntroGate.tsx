@@ -9,6 +9,7 @@ import { startPreload, useLoadProgress } from '../lib/loading'
 import { startWarp, type WarpFx } from '../lib/warp'
 import { FILM, filmAt, smooth } from '../landing/scene/film'
 import { world } from '../landing/scene/state'
+import { t } from '../i18n'
 
 // The gate shows a hand drawing itself while real loading happens behind it (fonts, the 3D scene, and a wake-up ping
 // to the backend). It never makes anyone wait longer than the loading takes, but it holds for a moment so the drawing
@@ -260,7 +261,7 @@ export default function IntroGate({ onReveal, onDone }: Props) {
 
   return (
     <>
-      <div ref={root} role="status" aria-label={`Loading ${BRAND.name}`} data-ui data-gate={ready ? 'film' : 'loading'} className="fixed inset-0 z-[100] overflow-hidden">
+      <div ref={root} role="status" aria-label={t("Loading {name}", { name: BRAND.name })} data-ui data-gate={ready ? 'film' : 'loading'} className="fixed inset-0 z-[100] overflow-hidden">
         {/* the cover: the gate's own sky, opaque so the page's sky behind it cannot show through, and the glow behind the hand */}
         <div ref={cover} className="absolute inset-0 isolate bg-paper">
           <div className="absolute inset-0">{showSky && <Cosmos />}</div>
@@ -306,8 +307,8 @@ export default function IntroGate({ onReveal, onDone }: Props) {
       {/* the stars of the flight: above the gate, so they carry on over the landing page while it opens */}
       <canvas ref={warp} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[101] h-full w-full" />
       {/* a small, quiet way out: low in the window, and it blends into the loader until it is looked at (above the stars, so they pass behind it) */}
-      <button ref={skipButton} type="button" onClick={skip} className="skip-button" aria-label="Skip the intro">
-        Skip
+      <button ref={skipButton} type="button" onClick={skip} className="skip-button" aria-label={t("Skip the intro")}>
+        {t("Skip")}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M2 2.5 6 6 2 9.5M7 2.5 11 6 7 9.5" />
         </svg>

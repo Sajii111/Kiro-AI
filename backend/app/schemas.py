@@ -192,7 +192,7 @@ class Report(Model):
 
 
 class ReadingMeta(Model):
-    _omit_when_none = ('note',)
+    _omit_when_none = ('note', 'language')
     provider: str
     model: str
     knowledgeBase: str
@@ -202,6 +202,9 @@ class ReadingMeta(Model):
     #: one plain sentence about how the words were written: which passages the language model wrote, and why any came from
     #: the knowledge base instead. Left out when there is nothing to say.
     note: str | None = None
+    #: the language the report was translated into ("si" Sinhala, "ta" Tamil: llm/translate.py). Left out for English, the
+    #: language every reading is written and checked in.
+    language: Literal['si', 'ta'] | None = None
 
 
 class Hands(Model):
@@ -482,6 +485,8 @@ class ConversationWithMessages(Conversation):
 
 class SendMessageInput(Model):
     text: str = Field(max_length=5000)
+    #: the language the answer is shown in: the website's language (an answer is written and checked in English first)
+    language: Literal['en', 'si', 'ta'] = 'en'
 
 
 class MessagePair(Model):

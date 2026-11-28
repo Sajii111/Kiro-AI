@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useHoldVeil } from '../lib/veil'
 import { useSession } from '../state/session'
 import Splash from './Splash'
+import { t } from '../i18n'
 
 /** /start: begins a guest session straight away and goes to the new-reading screen. */
 export default function StartGuest() {
@@ -25,5 +26,5 @@ export default function StartGuest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
 
-  return <Splash label="Setting up your guest session…" />
+  return <Splash label={t("Setting up your guest session…")} />
 }

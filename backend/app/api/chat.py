@@ -16,6 +16,7 @@ from app.core.security import new_id
 from app.deps import json_response, require_caller, still_alive, store_of
 from app.llm.chat import ChatContext
 from app.llm.chat_llm import respond
+from app.llm.translate import join, translate_answer
 from app.locks import can_reach, current_open, require_reach
 from app.schemas import (
     Conversation,
@@ -105,6 +106,12 @@ async def send_message(conversation_id: str, body: SendMessageInput, request: Re
     # `context` only reads from the store; what the answer changes (the counter, the messages) is done back here.
     response = await run_in_threadpool(respond, text, context, request.app.state.llm, bucket.model_replies)
     bucket.model_replies += response.model_calls  # the model was asked, whatever happens to its answer now
+    reply_text, note = response.answer.text, response.note
+    if body.language != 'en' and not reading.meta.mock:
+        # written and checked in English above; now shown in the person's language (llm/translate.py)
+        names = [context.profile.name, *[p.name for p in context.other_profiles]]  # never sent: swapped for placeholders
+        reply_text, untranslated = await run_in_threadpool(translate_answer, reply_text, body.language, request.app.state.llm, names)
+        note = join(note, untranslated)
 
     # The answer took a while, and the world may have moved on: the guest session may have ended, or the chat (or the reading or
     # the profile it belongs to, which takes its chats with it) may have been deleted in another tab. Then nothing is saved.
@@ -121,12 +128,12 @@ async def send_message(conversation_id: str, body: SendMessageInput, request: Re
         id=new_id('msg'),
         conversationId=conversation_id,
         role='assistant',
-        text=reply.text,
+        text=reply_text,
         createdAt=iso(t0 + 1),
         refs=reply.refs,
         flags=reply.flags,
         source=response.source,
-        note=response.note,
+        note=note,
     )
     bucket.messages.extend([user, assistant])
     convo.updatedAt = assistant.createdAt

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { BRAND } from '../brand'
 import { goTo } from './goTo'
 import { FAQ, PRIVACY } from './content'
+import { t } from '../i18n'
 
 // The calm, solid-background part of the page below the 3D world: privacy, the disclaimer, the FAQ and the footer.
 
@@ -14,12 +15,12 @@ export function Privacy() {
       className="relative px-6 pb-[12svh] pt-[16svh] before:pointer-events-none before:absolute before:inset-x-0 before:-top-56 before:h-56 before:bg-gradient-to-b before:from-transparent before:to-paper/70 md:px-12 lg:px-20"
     >
       <div className="mx-auto max-w-[88rem]">
-        <p className="reveal kicker">Privacy</p>
+        <p className="reveal kicker">{t("Privacy")}</p>
         <h2
           id="privacy-title"
-          className="split-heading mt-4 max-w-3xl font-display text-[clamp(2.4rem,5.4vw,4.8rem)] font-light leading-[1] tracking-tight"
+          className="split-heading mt-4 max-w-3xl font-display text-[calc(clamp(2.4rem,5.4vw,4.8rem)*var(--display-scale,1))] font-light leading-[1] tracking-tight"
         >
-          Your palms stay yours.
+          {t("Your palms stay yours.")}
         </h2>
         <ul className="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
           {PRIVACY.map((p, i) => (
@@ -41,18 +42,15 @@ export function Disclaimer() {
   return (
     <section id="disclaimer" aria-labelledby="disclaimer-title" className="relative px-6 py-[10svh] md:px-12 lg:px-20">
       <div className="reveal mx-auto max-w-[64rem] rounded-[2rem] border border-ink/12 bg-surface p-8 md:p-14">
-        <p className="kicker">A note before you begin</p>
+        <p className="kicker">{t("A note before you begin")}</p>
         <h2
           id="disclaimer-title"
-          className="mt-4 font-display text-[clamp(2rem,4.2vw,3.6rem)] font-light leading-[1.04] tracking-tight"
+          className="mt-4 font-display text-[calc(clamp(2rem,4.2vw,3.6rem)*var(--display-scale,1))] font-light leading-[1.04] tracking-tight"
         >
-          Palmistry is an old art, not a science.
+          {t("Palmistry is an old art, not a science.")}
         </h2>
         <p className="mt-6 max-w-3xl text-base text-muted md:text-lg">
-          Your reading speaks like a fortune teller, and a fortune is a story, not a promise. Palmistry is not a scientifically
-          validated way to know your future, your health, your wealth or the people in your life, so take what you read as something
-          to enjoy and to think about, never as fact, and never as medical, financial, employment or relationship advice. When a
-          line is unclear or missing, we say so rather than guess.
+          {t("Your reading speaks like a fortune teller, and a fortune is a story, not a promise. Palmistry is not a scientifically validated way to know your future, your health, your wealth or the people in your life, so take what you read as something to enjoy and to think about, never as fact, and never as medical, financial, employment or relationship advice. When a line is unclear or missing, we say so rather than guess.")}
         </p>
       </div>
     </section>
@@ -65,12 +63,12 @@ export function Faq() {
     <section id="faq" aria-labelledby="faq-title" className="relative px-6 py-[12svh] md:px-12 lg:px-20">
       <div className="mx-auto grid max-w-[88rem] gap-12 lg:grid-cols-[minmax(0,24rem)_1fr] lg:gap-24">
         <div>
-          <p className="reveal kicker">FAQ</p>
+          <p className="reveal kicker">{t("FAQ")}</p>
           <h2
             id="faq-title"
-            className="split-heading mt-4 font-display text-[clamp(2.4rem,5vw,4.4rem)] font-light leading-[1] tracking-tight"
+            className="split-heading mt-4 font-display text-[calc(clamp(2.4rem,5vw,4.4rem)*var(--display-scale,1))] font-light leading-[1] tracking-tight"
           >
-            Good questions.
+            {t("Good questions.")}
           </h2>
         </div>
         <ul className="border-b border-ink/15">
@@ -123,29 +121,28 @@ export function Footer() {
       <div className="mx-auto max-w-[88rem]">
         <div className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between">
           <p className="max-w-sm font-display text-2xl font-light leading-snug">
-            Your palms, read like a fortune teller reads them. A story, not a promise.
+            {t("Your palms, read like a fortune teller reads them. A story, not a promise.")}
           </p>
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+          <nav aria-label={t("Footer")} className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
             <Link to="/start" className="underline-offset-4 hover:underline">
-              Begin as a guest
+              {t("Begin as a guest")}
             </Link>
             <Link to="/signin" className="underline-offset-4 hover:underline">
-              Sign in
+              {t("Sign in")}
             </Link>
             <a href="#how" onClick={goTo('how')} className="underline-offset-4 hover:underline">
-              How it works
+              {t("How it works")}
             </a>
             <a href="#privacy" onClick={goTo('privacy')} className="underline-offset-4 hover:underline">
-              Privacy
+              {t("Privacy")}
             </a>
             <a href="#faq" onClick={goTo('faq')} className="underline-offset-4 hover:underline">
-              FAQ
+              {t("FAQ")}
             </a>
           </nav>
         </div>
         <p className="mt-10 max-w-3xl text-xs text-muted">
-          Palmistry is an old art, not a scientifically validated method. A reading is a story about who you may become, never a
-          promise, and never medical, financial or relationship advice.
+          {t("Palmistry is an old art, not a scientifically validated method. A reading is a story about who you may become, never a promise, and never medical, financial or relationship advice.")}
         </p>
       </div>
       <div

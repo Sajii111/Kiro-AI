@@ -5,11 +5,12 @@ import type { Conversation, ReadingSummary } from '../api/types'
 import StatusDot from '../components/StatusDot'
 import Icon from '../components/ui/icons'
 import { formatDate, plural, relativeDay } from '../lib/format'
-import { readingLabel } from '../lib/readings'
+import { readingLabel, headlineText } from '../lib/readings'
 import { useResource } from '../lib/useResource'
 import { useData } from '../state/data'
 import { useSession } from '../state/session'
 import { DeleteChatModal, DeleteReadingModal } from './ReadingModals'
+import { t } from '../i18n'
 
 // Everything that has been made, in one place: readings and chats, newest first, with a filter per profile and a
 // delete button on each. For a guest this is "this session": temporary, and it says so.
@@ -21,13 +22,13 @@ function ReadingEntry({ reading, onDelete }: { reading: ReadingSummary; onDelete
       <Link to={`/app/readings/${reading.id}`} className="group flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-2 py-3" data-cursor>
         <span className="min-w-0 flex-1 basis-56">
           {/* a reading with a name shows it as the title, and moves what it found down to the small line */}
-          <span className="block font-display text-lg [overflow-wrap:anywhere] group-hover:text-accent-ink">{reading.name ?? reading.headline}</span>
+          <span className="block font-display text-lg [overflow-wrap:anywhere] group-hover:text-accent-ink">{reading.name ?? headlineText(reading.headline)}</span>
           <span className="block text-sm text-muted">
             {reading.profileName} · {when}
-            {reading.name ? ` · ${reading.headline}` : ''}
+            {reading.name ? ` · ${headlineText(reading.headline)}` : ''}
           </span>
         </span>
-        <span className="flex items-center gap-4 text-sm" role="img" aria-label={`${reading.counts.detected} detected, ${reading.counts.uncertain} uncertain, ${reading.counts.not_visible} not visible`}>
+        <span className="flex items-center gap-4 text-sm" role="img" aria-label={t("{detected} detected, {uncertain} uncertain, {not_visible} not visible", { detected: reading.counts.detected, uncertain: reading.counts.uncertain, not_visible: reading.counts.not_visible })}>
           <span className="flex items-center gap-1.5">
             <StatusDot status="detected" /> {reading.counts.detected}
           </span>
@@ -46,7 +47,7 @@ function ReadingEntry({ reading, onDelete }: { reading: ReadingSummary; onDelete
         type="button"
         onClick={onDelete}
         aria-label={`Delete ${readingLabel(reading, reading.profileName)}`}
-        title="Delete this reading"
+        title={t("Delete this reading")}
         className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger"
       >
         <Icon name="trash" size={17} />
@@ -62,14 +63,14 @@ function ChatEntry({ chat, profileName, aboutReading, onDelete }: { chat: Conver
         <span className="block truncate font-medium group-hover:text-accent-ink">{chat.title}</span>
         <span className="block text-sm text-muted">
           {profileName}
-          {aboutReading ? ` · about ${aboutReading}` : ''} · {plural(chat.messageCount, 'message')} · {relativeDay(chat.updatedAt)}
+          {aboutReading ? t(" · about {aboutReading}", { aboutReading: aboutReading }) : ''} · {plural(chat.messageCount, 'message')} · {relativeDay(chat.updatedAt)}
         </span>
       </Link>
       <button
         type="button"
         onClick={onDelete}
-        aria-label={`Delete chat: ${chat.title}`}
-        title="Delete this chat"
+        aria-label={t("Delete chat: {title}", { title: chat.title })}
+        title={t("Delete this chat")}
         className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger"
       >
         <Icon name="trash" size={17} />
@@ -107,33 +108,33 @@ export default function History() {
 
   const shownReadings = readings.data
   const shownChats = chats.data
-  const nameOf = (id: string) => profiles?.find((p) => p.id === id)?.name ?? 'Someone'
+  const nameOf = (id: string) => profiles?.find((p) => p.id === id)?.name ?? t("Someone")
   /** which reading a chat is about, in words: its name when it has one, otherwise its date */
   const aboutReading = (id: string) => {
     const r = readings.data?.find((x) => x.id === id)
-    return r ? (r.name ? `“${r.name}”` : `the reading of ${formatDate(r.createdAt)}`) : null
+    return r ? (r.name ? `“${r.name}”` : t("the reading of {0}", { "0": formatDate(r.createdAt) })) : null
   }
 
   return (
     <div className="space-y-12">
       <header>
-        <p className="kicker">{guest ? 'Guest session' : 'History'}</p>
-        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{guest ? 'This session' : `Everything for ${activeProfile?.name ?? 'this profile'}`}</h1>
+        <p className="kicker">{guest ? t("Guest session") : t("History")}</p>
+        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{guest ? t("This session") : t("Everything for {0}", { "0": activeProfile?.name ?? t('this profile') })}</h1>
         <p className="mt-3 max-w-xl text-muted">
           {guest
-            ? `${activeProfile?.name ?? 'This profile'}’s readings and chats from this guest session. They are temporary: when the session ends they are deleted, so this is not saved history.`
-            : `Every reading and chat of ${activeProfile?.name ?? 'this profile'}, newest first. You can open any of them, or delete the ones you no longer want. Other profiles keep their own history.`}
+            ? t("{0}’s readings and chats from this guest session. They are temporary: when the session ends they are deleted, so this is not saved history.", { "0": activeProfile?.name ?? t('This profile') })
+            : t("Every reading and chat of {0}, newest first. You can open any of them, or delete the ones you no longer want. Other profiles keep their own history.", { "0": activeProfile?.name ?? t('this profile') })}
         </p>
         {guest && (
           <Link to="/signin" state={{ mode: 'signup', from: '/app/history' }} className="btn btn-ghost btn-sm mt-5">
-            Create an account to keep them <Icon name="arrow-right" size={15} />
+            {t("Create an account to keep them")}{' '}<Icon name="arrow-right" size={15} />
           </Link>
         )}
       </header>
 
       <section aria-labelledby="history-readings">
         <h2 id="history-readings" className="mb-5 font-display text-2xl font-normal">
-          Readings
+          {t("Readings")}
         </h2>
         {readings.error ? (
           <p role="alert" className="text-sm text-danger">
@@ -144,11 +145,11 @@ export default function History() {
         ) : shownReadings.length === 0 ? (
           <div className="card flex flex-wrap items-center justify-between gap-4 p-8">
             <div>
-              <h3 className="font-display text-xl font-normal">No readings for {nameOf(profileId)} yet</h3>
-              <p className="mt-1 text-sm text-muted">Upload a clear photo of each palm and the reading appears here.</p>
+              <h3 className="font-display text-xl font-normal">{t('No readings for {name} yet', { name: nameOf(profileId) })}</h3>
+              <p className="mt-1 text-sm text-muted">{t("Upload a clear photo of each palm and the reading appears here.")}</p>
             </div>
             <Link to="/app/new" className="btn btn-primary">
-              Start a reading <Icon name="arrow-right" size={16} />
+              {t("Start a reading")}{' '}<Icon name="arrow-right" size={16} />
             </Link>
           </div>
         ) : (
@@ -158,12 +159,12 @@ export default function History() {
             ))}
           </ul>
         )}
-        <p className="mt-4 text-sm text-muted">Photos are not listed because they are never kept. Only the results, the report and the chats are.</p>
+        <p className="mt-4 text-sm text-muted">{t("Photos are not listed because they are never kept. Only the results, the report and the chats are.")}</p>
       </section>
 
       <section aria-labelledby="history-chats">
         <h2 id="history-chats" className="mb-5 font-display text-2xl font-normal">
-          Chats
+          {t("Chats")}
         </h2>
         {chats.error ? (
           <p role="alert" className="text-sm text-danger">
@@ -173,8 +174,8 @@ export default function History() {
           <Skeleton rows={1} />
         ) : shownChats.length === 0 ? (
           <div className="card p-8">
-            <h3 className="font-display text-xl font-normal">No chats for {nameOf(profileId)} yet</h3>
-            <p className="mt-1 text-sm text-muted">Open a reading and ask a question. Each chat belongs to one reading and never mixes with another.</p>
+            <h3 className="font-display text-xl font-normal">{t('No chats for {name} yet', { name: nameOf(profileId) })}</h3>
+            <p className="mt-1 text-sm text-muted">{t("Open a reading and ask a question. Each chat belongs to one reading and never mixes with another.")}</p>
           </div>
         ) : (
           <ul className="space-y-3">

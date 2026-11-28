@@ -1,6 +1,7 @@
 import Icon from '../ui/icons'
 import Spinner from '../ui/Spinner'
 import { STAGES, type StepState } from './palmCopy'
+import { t, tServer } from '../../i18n'
 
 /** The five steps of a palm attempt, live: what each did, the picture it made, and how long it took. */
 export default function PalmSteps({ steps }: { steps: StepState }) {
@@ -17,9 +18,9 @@ export default function PalmSteps({ steps }: { steps: StepState }) {
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-baseline gap-x-2 font-medium">
                 {s.title}
-                {e?.ms !== undefined && state !== 'running' && <span className="text-xs font-normal text-muted">{Math.round(e.ms)} ms</span>}
+                {e?.ms !== undefined && state !== 'running' && <span className="text-xs font-normal text-muted">{Math.round(e.ms)} {t("ms")}</span>}
               </p>
-              <p className="mt-0.5 text-sm text-muted">{e?.detail ?? s.note}</p>
+              <p className="mt-0.5 text-sm text-muted">{e?.detail ? tServer(e.detail) : s.note}</p>
             </div>
             {e?.preview && <img src={e.preview} alt={`${s.title}: what this step made`} className="h-20 shrink-0 rounded-lg border border-ink/10 object-contain" />}
           </li>

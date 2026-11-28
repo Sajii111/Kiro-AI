@@ -147,7 +147,7 @@ def test_readings_are_added_never_replaced(guest, profile):
 
 
 def test_a_failed_step_ends_the_stream_with_an_error_and_saves_nothing(guest, profile, monkeypatch):
-    def crash(reading_id, profile_id, photos, emit, cancel, pause_ms, llm=None):
+    def crash(reading_id, profile_id, photos, emit, cancel, pause_ms, llm=None, language='en'):
         emit('validate', 'done', 'Both photos passed the checks', None)
         emit('contrast', 'running', None, None)
         raise RuntimeError('boom')

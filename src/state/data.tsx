@@ -5,6 +5,7 @@ import type { HandProfile } from '../api/types'
 import { useToast } from '../components/ui/Toast'
 import { useSession } from './session'
 import { sessionKey } from './sessionKey'
+import { t } from '../i18n'
 
 // The hand profiles of whoever is signed in, and which one is "active" right now.
 // Every screen that makes or shows a reading works on the active profile, and a chat is always tied to one reading
@@ -61,7 +62,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     api
       .listProfiles()
       .then((profiles) => live && setLoaded({ key, profiles }))
-      .catch((e: unknown) => live && setLoaded({ key, error: e instanceof Error ? e.message : 'Could not load your profiles.' }))
+      .catch((e: unknown) => live && setLoaded({ key, error: e instanceof Error ? e.message : t("Could not load your profiles.") }))
     return () => {
       live = false
     }

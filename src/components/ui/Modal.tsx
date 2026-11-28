@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import Icon from './icons'
+import { t } from '../../i18n'
 
 type Props = {
   open: boolean
@@ -41,7 +42,7 @@ export default function Modal({ open, onClose, title, lead, children, locked = f
       {open && (
         <div className="relative p-6 md:p-8">
           {!locked && (
-            <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-ink/5 hover:text-ink">
+            <button type="button" onClick={onClose} aria-label={t("Close")} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-ink/5 hover:text-ink">
               <Icon name="x" />
             </button>
           )}

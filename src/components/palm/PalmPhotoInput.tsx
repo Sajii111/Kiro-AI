@@ -5,6 +5,7 @@ import { ACCEPT, preparePhoto, PhotoProblem, type PreparedPhoto } from '../../li
 import Icon from '../ui/icons'
 import Spinner from '../ui/Spinner'
 import CameraCapture from './CameraCapture'
+import { t } from '../../i18n'
 
 /**
  * One palm photo: take it with the camera (with a hand outline to guide), or choose a file. It is shrunk in the browser and
@@ -43,7 +44,7 @@ export default function PalmPhotoInput({
     try {
       onPhoto(await preparePhoto(file))
     } catch (e) {
-      setProblem(e instanceof PhotoProblem ? e.message : 'That photo could not be opened. Please choose another one.')
+      setProblem(e instanceof PhotoProblem ? e.message : t("That photo could not be opened. Please choose another one."))
     } finally {
       setBusy(false)
       if (input.current) input.current.value = ''
@@ -64,14 +65,14 @@ export default function PalmPhotoInput({
           {!disabled && (
             <div className="absolute inset-x-2 bottom-2 flex justify-end gap-2">
               {canCamera && (
-                <button type="button" onClick={() => setCamera(true)} className="btn btn-ghost btn-sm bg-surface/85 backdrop-blur" aria-label={`Retake ${label} with the camera`} title="Retake with the camera">
-                  <Icon name="camera" size={14} /> {!compact && 'Retake'}
+                <button type="button" onClick={() => setCamera(true)} className="btn btn-ghost btn-sm bg-surface/85 backdrop-blur" aria-label={t("Retake {label} with the camera", { label: label })} title={t("Retake with the camera")}>
+                  <Icon name="camera" size={14} /> {!compact && t("Retake")}
                 </button>
               )}
-              <button type="button" onClick={pick} className="btn btn-ghost btn-sm bg-surface/85 backdrop-blur" aria-label={`Choose another file for ${label}`} title="Upload another photo">
-                <Icon name="upload" size={14} /> {!compact && 'Upload'}
+              <button type="button" onClick={pick} className="btn btn-ghost btn-sm bg-surface/85 backdrop-blur" aria-label={t("Choose another file for {label}", { label: label })} title={t("Upload another photo")}>
+                <Icon name="upload" size={14} /> {!compact && t("Upload")}
               </button>
-              <button type="button" onClick={() => onPhoto(null)} className="btn btn-ghost btn-sm bg-surface/85 backdrop-blur" aria-label={`Remove ${label}`} title="Remove">
+              <button type="button" onClick={() => onPhoto(null)} className="btn btn-ghost btn-sm bg-surface/85 backdrop-blur" aria-label={t("Remove {label}", { label: label })} title={t("Remove")}>
                 <Icon name="x" size={14} />
               </button>
             </div>
@@ -86,14 +87,14 @@ export default function PalmPhotoInput({
           <div className={`flex ${compact ? 'flex-col' : 'flex-row'} flex-wrap items-center justify-center gap-2`}>
             {canCamera && (
               <button type="button" onClick={() => setCamera(true)} disabled={off} className={`btn ${compact ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}`}>
-                <Icon name="camera" size={14} /> Camera
+                <Icon name="camera" size={14} /> {t("Camera")}
               </button>
             )}
             <button type="button" onClick={pick} disabled={off} className={`btn btn-ghost btn-sm`}>
-              <Icon name="upload" size={14} /> Upload
+              <Icon name="upload" size={14} /> {t("Upload")}
             </button>
           </div>
-          {!compact && <span className="text-xs">{canCamera ? 'Take a photo now, or choose a JPG or PNG.' : 'Choose a JPG or PNG. On a phone this offers the camera.'}</span>}
+          {!compact && <span className="text-xs">{canCamera ? t("Take a photo now, or choose a JPG or PNG.") : t("Choose a JPG or PNG. On a phone this offers the camera.")}</span>}
         </div>
       )}
       {shown && (

@@ -5,10 +5,16 @@ import '@fontsource-variable/fraunces/opsz.css'
 import '@fontsource-variable/fraunces/opsz-italic.css'
 import '@fontsource-variable/dm-sans/wght.css'
 import './index.css'
-import App from './App.tsx'
+import { loadLanguage } from './i18n'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// The chosen language's words load first, then the app: some screens work out their text once, when their file loads.
+loadLanguage()
+  .catch(() => undefined)
+  .then(() => import('./App.tsx'))
+  .then(({ default: App }) => {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    )
+  })

@@ -62,8 +62,33 @@ def good_chat(prompt: str) -> dict:
     }
 
 
+#: a stand-in "translation": every Latin letter becomes a Sinhala or Tamil letter, so the result is in the right script and
+#: keeps the length, and the test can still tell which English text it came from (`untranslate`)
+SCRIPT_BASE = {'Sinhala': 0x0D9A, 'Tamil': 0x0B95}
+
+
+KEEP = re.compile(r'(NAME\d+|Gemini|Kiro)')
+
+
+def fake_translate(text: str, language: str) -> str:
+    """Placeholders for names, and the names Gemini and Kiro, stay as they are, as the instructions ask."""
+    base = SCRIPT_BASE[language]
+    return ''.join(
+        part if KEEP.fullmatch(part) else ''.join(chr(base + (ord(c.lower()) - 97) % 20) if c.isascii() and c.isalpha() else c for c in part)
+        for part in KEEP.split(text)
+    )
+
+
+def good_translation(system: str, prompt: str) -> dict:
+    """A translation: the same keys, each text in the stand-in script of the language the system prompt names."""
+    language = 'Tamil' if 'into Tamil' in system else 'Sinhala'
+    texts = json.loads(prompt.split('\n', 1)[1])
+    return {key: fake_translate(text, language) for key, text in texts.items()}
+
+
 def good(prompt: str) -> dict:
-    """What a well-behaved model answers: a chat answer for a chat prompt (they start with READING), a report otherwise."""
+    """What a well-behaved model answers: a chat answer for a chat prompt (they start with READING), a report otherwise.
+    (A translation request is answered by FakeModel itself: it needs the system prompt too.)"""
     return good_chat(prompt) if prompt.startswith('READING') else good_answer(prompt)
 
 
@@ -82,13 +107,15 @@ class FakeModel:
 
     name = 'fake-gemini'
 
-    def __init__(self, respond: Callable[[str], object] | None = None):
+    def __init__(self, respond: Callable[[str], object] | None = None, translate: Callable[[str, str], object] | None = None):
         self.respond = respond or good
+        #: how a translation request (its prompt starts with TRANSLATE) is answered: `translate(system, prompt)`
+        self.translate = translate or good_translation
         self.requests: list[Request] = []
 
     def generate(self, system: str, prompt: str, schema: dict, *, temperature: float, max_tokens: int, timeout_s: float) -> str:
         self.requests.append(Request(system, prompt, schema, temperature, max_tokens, timeout_s))
-        out = self.respond(prompt)
+        out = self.translate(system, prompt) if prompt.startswith('TRANSLATE') else self.respond(prompt)
         if isinstance(out, Exception):
             raise out
         return out if isinstance(out, str) else json.dumps(out)

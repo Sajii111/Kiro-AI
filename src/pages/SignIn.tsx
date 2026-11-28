@@ -6,6 +6,7 @@ import { BRAND } from '../brand'
 import Logo from '../components/Logo'
 import SoundToggle from '../components/SoundToggle'
 import ThemeToggle from '../components/ThemeToggle'
+import LanguagePicker from '../components/LanguagePicker'
 import { PalmArt } from '../components/palm/PalmBase'
 import Icon from '../components/ui/icons'
 import Spinner from '../components/ui/Spinner'
@@ -16,6 +17,7 @@ import { GUEST_SESSION_MINUTES } from '../config'
 import { validateDisplayName, validateEmail, validatePassword } from '../lib/validate'
 import { useSession } from '../state/session'
 import { useUi } from '../state/ui'
+import { t } from '../i18n'
 
 type Mode = 'signin' | 'signup'
 type LocationState = { from?: string; mode?: Mode } | null
@@ -50,7 +52,7 @@ export default function SignIn() {
     const found = {
       name: mode === 'signup' ? validateDisplayName(name) : null,
       email: validateEmail(email),
-      password: mode === 'signup' ? validatePassword(password) : password ? null : 'Please enter your password.',
+      password: mode === 'signup' ? validatePassword(password) : password ? null : t("Please enter your password."),
     }
     setErrors(found)
     setFormError(null)
@@ -87,6 +89,7 @@ export default function SignIn() {
           <div className="hidden sm:block">
             <SoundToggle variant="inline" />
           </div>
+          <LanguagePicker compact />
           <ThemeToggle theme={theme} onToggle={toggleTheme} compact />
         </div>
       </header>
@@ -97,30 +100,30 @@ export default function SignIn() {
             <p role="status" className="mb-6 flex items-start gap-3 rounded-2xl bg-accent2/25 p-4 text-sm">
               <Icon name="info" className="mt-0.5" />
               <span className="flex-1">{notice}</span>
-              <button type="button" onClick={clearNotice} aria-label="Dismiss" className="text-muted hover:text-ink">
+              <button type="button" onClick={clearNotice} aria-label={t("Dismiss")} className="text-muted hover:text-ink">
                 <Icon name="x" size={16} />
               </button>
             </p>
           )}
 
-          <p className="kicker">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</p>
+          <p className="kicker">{mode === 'signin' ? t("Welcome back") : t("Create your account")}</p>
           <h1 className="mt-3 text-balance font-display text-4xl font-light leading-tight tracking-tight md:text-5xl">
-            {mode === 'signin' ? 'Pick up where you left off.' : 'Keep your readings, privately.'}
+            {mode === 'signin' ? t("Pick up where you left off.") : t("Keep your readings, privately.")}
           </h1>
           <p className="mt-4 text-muted">
             {mode === 'signin'
-              ? 'Your hand profiles, readings and chats are waiting.'
-              : 'An account keeps your hand profiles, readings and chats. Your photos are never kept, with or without one.'}
+              ? t("Your hand profiles, readings and chats are waiting.")
+              : t("An account keeps your hand profiles, readings and chats. Your photos are never kept, with or without one.")}
           </p>
 
           {session?.kind === 'guest' && mode === 'signup' && (
             <p className="mt-5 flex items-start gap-3 rounded-2xl border border-ink/10 bg-surface p-4 text-sm">
               <Icon name="info" className="mt-0.5" />
-              <span>You are in a guest session. After you sign up we will ask whether you want to bring it with you. Nothing is moved unless you say yes.</span>
+              <span>{t("You are in a guest session. After you sign up we will ask whether you want to bring it with you. Nothing is moved unless you say yes.")}</span>
             </p>
           )}
 
-          <div role="tablist" aria-label="Sign in or create an account" className="mt-8 inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
+          <div role="tablist" aria-label={t("Sign in or create an account")} className="mt-8 inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
             {(['signin', 'signup'] as const).map((m) => (
               <button
                 key={m}
@@ -130,24 +133,24 @@ export default function SignIn() {
                 onClick={() => switchMode(m)}
                 className={`rounded-full px-5 py-2 transition-colors ${mode === m ? 'bg-ink text-paper' : 'text-ink/75 hover:text-ink'}`}
               >
-                {m === 'signin' ? 'Sign in' : 'Create account'}
+                {m === 'signin' ? t("Sign in") : t("Create account")}
               </button>
             ))}
           </div>
 
           <form onSubmit={submit} noValidate className="mt-6 space-y-4">
             {mode === 'signup' && (
-              <TextField label="What should we call you?" value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" error={errors.name} hint="A first name or nickname." />
+              <TextField label={t("What should we call you?")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" error={errors.name} hint={t("A first name or nickname.")} />
             )}
-            <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" error={errors.email} />
+            <TextField label={t("Email")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" error={errors.email} />
             <TextField
-              label="Password"
+              label={t("Password")}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               error={errors.password}
-              hint={mode === 'signup' ? 'At least 8 characters.' : undefined}
+              hint={mode === 'signup' ? t("At least 8 characters.") : undefined}
             />
             {formError && (
               <p role="alert" className="flex items-start gap-2 text-sm text-danger">
@@ -155,28 +158,28 @@ export default function SignIn() {
               </p>
             )}
             <button type="submit" disabled={!!busy} className="btn btn-primary w-full !py-4">
-              {busy === 'form' && <Spinner />} {mode === 'signin' ? 'Sign in' : 'Create account'}
+              {busy === 'form' && <Spinner />} {mode === 'signin' ? t("Sign in") : t("Create account")}
             </button>
           </form>
 
           {isMock && (
             <p className="mt-4 flex items-start gap-2 text-xs text-muted">
               <Icon name="info" size={14} className="mt-0.5" />
-              Demo mode: no real account is created and everything stays in this browser. Sign-in only knows accounts made here.
+              {t("Demo mode: no real account is created and everything stays in this browser. Sign-in only knows accounts made here.")}
             </p>
           )}
 
           <div className="my-8 flex items-center gap-4 text-xs uppercase tracking-widest text-muted">
-            <span className="h-px flex-1 bg-ink/15" /> or <span className="h-px flex-1 bg-ink/15" />
+            <span className="h-px flex-1 bg-ink/15" /> {t("or")}{' '}<span className="h-px flex-1 bg-ink/15" />
           </div>
 
           <div className="card p-5">
-            <h2 className="font-display text-xl font-normal">Just looking?</h2>
+            <h2 className="font-display text-xl font-normal">{t("Just looking?")}</h2>
             <p className="mt-1.5 text-sm text-muted">
-              Try the whole journey, chat included, with no account. It is temporary: nothing is saved, and the session ends by itself after {GUEST_SESSION_MINUTES >= 60 ? `${GUEST_SESSION_MINUTES / 60} hours` : `${GUEST_SESSION_MINUTES} minutes`}.
+              {t('Try the whole journey, chat included, with no account. It is temporary: nothing is saved, and the session ends by itself after {time}.', { time: GUEST_SESSION_MINUTES >= 60 ? t('{n} hours', { n: GUEST_SESSION_MINUTES / 60 }) : t('{n} minutes', { n: GUEST_SESSION_MINUTES }) })}
             </p>
             <button type="button" onClick={guest} disabled={!!busy} className="btn btn-ghost mt-4">
-              {busy === 'guest' && <Spinner />} Continue as a guest <Icon name="arrow-right" size={16} />
+              {busy === 'guest' && <Spinner />} {t("Continue as a guest")}{' '}<Icon name="arrow-right" size={16} />
             </button>
           </div>
         </div>
@@ -186,13 +189,13 @@ export default function SignIn() {
             <div className="card relative overflow-hidden p-6">
               <PalmArt className="mx-auto w-full" />
               <ul className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
-                <li className="flex items-center gap-2"><StatusDot status="detected" /> Detected</li>
-                <li className="flex items-center gap-2"><StatusDot status="uncertain" /> Uncertain</li>
-                <li className="flex items-center gap-2"><StatusDot status="not_visible" /> Not visible</li>
+                <li className="flex items-center gap-2"><StatusDot status="detected" /> {t("Detected")}</li>
+                <li className="flex items-center gap-2"><StatusDot status="uncertain" /> {t("Uncertain")}</li>
+                <li className="flex items-center gap-2"><StatusDot status="not_visible" /> {t("Not visible")}</li>
               </ul>
             </div>
             <p className="mx-auto mt-5 max-w-sm text-center text-sm text-muted">
-              Every line is marked for what it is. If something cannot be seen, the reading says so and never makes it up.
+              {t("Every line is marked for what it is. If something cannot be seen, the reading says so and never makes it up.")}
             </p>
           </div>
         </aside>

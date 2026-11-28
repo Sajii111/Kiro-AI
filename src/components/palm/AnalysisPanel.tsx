@@ -4,6 +4,7 @@ import { featureNumber } from '../../lib/features'
 import { STATUS_LABEL } from '../../lib/status'
 import { pointsToPath } from '../../lib/svgPath'
 import PalmSilhouette from './PalmSilhouette'
+import { t } from '../../i18n'
 
 // THE annotated analysis: the hand with each principal line drawn on it, in a style that says how sure we are.
 //   detected     solid line, filled number badge
@@ -44,7 +45,7 @@ export default function AnalysisPanel({ analysis, photoUrl = null, showLines = t
   const { width: W, height: H } = analysis.photo
   const R = W * 0.036
   const px = ([x, y]: NormPoint): [number, number] => [x * W, y * H]
-  const sideName = analysis.side === 'left' ? 'Left' : 'Right'
+  const sideName = analysis.side === 'left' ? t("Left") : t("Right")
   const interactive = !!onToggle
 
   // where each line is, and where its numbered mark sits: at the far end of the line, or on the top edge of the searched area
@@ -104,7 +105,7 @@ export default function AnalysisPanel({ analysis, photoUrl = null, showLines = t
     >
       {photoUrl && <img src={photoUrl} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none object-fill" />}
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" role="group" aria-label={`${sideName} palm with its main lines marked`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" role="group" aria-label={t("{sideName} palm with its main lines marked", { sideName: sideName })}>
         {!photoUrl && analysis.outline && <PalmSilhouette pts={analysis.outline.map(px)} w={W} h={H} />}
 
         {showLines && (
@@ -172,7 +173,7 @@ export default function AnalysisPanel({ analysis, photoUrl = null, showLines = t
 
             {/* layer two: the numbered marks, always above every line */}
             {shapes.map(({ f, bx, by, isActive, dim }) => {
-              const label = `${f.name}, ${STATUS_LABEL[f.status].toLowerCase()}${f.confidence !== null ? `, score ${Math.round(f.confidence * 100)} percent` : ''}`
+              const label = `${t(f.name)}, ${STATUS_LABEL[f.status].toLowerCase()}${f.confidence !== null ? t(", score {0} percent", { "0": Math.round(f.confidence * 100) }) : ''}`
               const toggle = () => onToggle?.(f.id)
               const onKey = (e: KeyboardEvent) => {
                 if (e.key === 'Enter' || e.key === ' ') {

@@ -41,6 +41,7 @@ from app.deps import (
 )
 from app.llm.gemini import ModelService
 from app.llm.report import count_statuses, headline_for
+from app.llm.translate import CODES
 from app.locks import can_reach, current_open, require_reach
 from app.schemas import (
     DataCounts,
@@ -87,6 +88,7 @@ async def stream_reading(
     photos: dict[str, CheckedPhoto],
     llm: ModelService | None = None,
     name: str | None = None,
+    language: str = 'en',
 ) -> AsyncIterator[str]:
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[tuple[str, object]] = asyncio.Queue()
@@ -105,7 +107,7 @@ async def stream_reading(
 
     def work() -> None:
         try:
-            reading = run_reading(reading_id, profile_id, photos, emit, cancel, settings.stage_pause_ms, llm=llm)  # type: ignore[arg-type]
+            reading = run_reading(reading_id, profile_id, photos, emit, cancel, settings.stage_pause_ms, llm=llm, language=language)  # type: ignore[arg-type]
             if name:  # the person's own label for it: added after the words are written, so it never goes near Gemini
                 reading = reading.model_copy(update={'name': name})
             post('done', reading)
@@ -178,6 +180,16 @@ def reading_name_in(form: FormData) -> str | None:
     return clean_reading_name(value) or None
 
 
+def reading_language_in(form: FormData) -> str:
+    """The optional `language` field of a new reading: "en" (the default), "si" or "ta"."""
+    value = form.get('language')
+    if value is None or value == '':
+        return 'en'
+    if value not in CODES:
+        raise ApiError('invalid', 'A reading can be written in English, Sinhala or Tamil.')
+    return str(value)
+
+
 @router.post('/readings')
 async def create_reading(request: Request):
     caller = require_caller(request)
@@ -190,6 +202,7 @@ async def create_reading(request: Request):
             raise not_found('hand profile')
         require_reach(caller.bucket, profile_id, current_open(request, caller))
         name = reading_name_in(form)  # said before any photo is looked at, so a bad name costs nothing
+        language = reading_language_in(form)
         raw = {side: await take_photo(form, side, side, settings) for side in ('left', 'right')}
         samples = {side: flag(form, f'{side}Sample') for side in ('left', 'right')}
     finally:
@@ -205,7 +218,7 @@ async def create_reading(request: Request):
             raise ApiError('invalid', f'The {side} photo did not pass the checks. {photos[side].first_problem()}')
 
     body = stream_reading(
-        store=store, caller=caller, settings=settings, slots=request.app.state.reading_slots, profile_id=profile_id, photos=photos, llm=request.app.state.llm, name=name
+        store=store, caller=caller, settings=settings, slots=request.app.state.reading_slots, profile_id=profile_id, photos=photos, llm=request.app.state.llm, name=name, language=language
     )
     return StreamingResponse(
         body,

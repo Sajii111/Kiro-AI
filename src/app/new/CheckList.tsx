@@ -1,8 +1,9 @@
 import type { CheckStatus, PhotoCheck } from '../../api/types'
 import Icon from '../../components/ui/icons'
 import Spinner from '../../components/ui/Spinner'
+import { t, tServer } from '../../i18n'
 
-const ORDER = ['File type', 'File opens', 'Size', 'Focus', 'Lighting', 'Palm in view']
+const ORDER = [t("File type"), t("File opens"), t("Size"), t("Focus"), t("Lighting"), t("Palm in view")]
 
 function StatusIcon({ status }: { status: CheckStatus | 'pending' }) {
   if (status === 'pending') return <Spinner size={14} className="text-muted" />
@@ -29,11 +30,11 @@ export default function CheckList({ checks }: { checks: PhotoCheck[] | null }) {
             <StatusIcon status={row.status} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className={`font-medium ${row.status === 'pending' ? 'text-muted' : ''}`}>{row.label}</span>
+            <span className={`font-medium ${row.status === 'pending' ? 'text-muted' : ''}`}>{t(row.label)}</span>
             {row.message && (
               <span className={`mt-0.5 block ${row.status === 'pass' ? 'text-muted' : row.status === 'warn' ? 'text-ink' : 'text-danger'}`}>
-                <span className="sr-only">{row.status === 'pass' ? 'Passed. ' : row.status === 'warn' ? 'Warning. ' : 'Failed. '}</span>
-                {row.message}
+                <span className="sr-only">{row.status === 'pass' ? t("Passed. ") : row.status === 'warn' ? t("Warning. ") : t("Failed. ")}</span>
+                {tServer(row.message)}
               </span>
             )}
           </span>

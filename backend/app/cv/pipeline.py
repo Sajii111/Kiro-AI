@@ -28,6 +28,7 @@ from app.cv.lines import analyse
 from app.cv.standin import build_analysis, plan_statuses
 from app.llm.gemini import ModelService
 from app.llm.report import REAL_META, STAND_IN_META, build_report, count_statuses
+from app.llm.translate import translate_reading
 from app.llm.writer import write_reading
 from app.schemas import Hands, HandSide, PhotoSize, Previews, Reading
 
@@ -203,11 +204,15 @@ def run_reading(
     cancel: threading.Event,
     pause_ms: int,
     llm: ModelService | None = None,
+    language: str = 'en',
 ) -> Reading:
     """Runs every step on both photos, reporting each one as it starts and ends. Runs in a worker thread.
 
     It stops at "the report is being written": saving the reading and the final events belong to the caller, so
     `reading` is only ever sent after the reading is stored. Raises Cancelled when the browser has gone.
+
+    `language` is the language the report is shown in: "en", or "si"/"ta", which a real reading is translated into once it is
+    written (a sample reading stays in English).
 
     `llm` is the language-model service. When it has a key, the report of a real reading is written by Gemini and checked
     (llm/writer.py); a sample reading, or no key, keeps the fixed wording."""
@@ -264,5 +269,9 @@ def run_reading(
         reading = write_reading(reading, llm, cancelled=cancel.is_set)  # takes as long as Gemini takes; it never raises
     else:
         pause(1.4)
+    if real and language != 'en':
+        check()
+        # written and checked in English; now put into Sinhala or Tamil (llm/translate.py). It never raises either.
+        reading = translate_reading(reading, language, llm, cancelled=cancel.is_set)
     check()
     return reading

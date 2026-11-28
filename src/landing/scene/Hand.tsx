@@ -14,6 +14,7 @@ import {
 import { clearTip, pick, setTip } from './pick'
 import { world } from './state'
 import { rng } from '../../lib/rand'
+import { t } from '../../i18n'
 
 // The signature object: a hand made of flowing line ribbons and rising particles.
 // It draws itself in, floats, and leans a little towards the pointer.
@@ -31,11 +32,11 @@ const CY = HAND_CENTRE.y
 
 /** What the label says for each line: its name and the theme tradition gives it (not a claim, and never advice). */
 const LINE_TIPS: Record<string, string> = {
-  heart: 'Heart line · tradition: feelings',
-  head: 'Head line · tradition: thinking',
-  life: 'Life line · tradition: life’s journey',
-  fate: 'Fate line · tradition: direction',
-  sun: 'Sun line · tradition: creativity',
+  heart: t("Heart line · tradition: feelings"),
+  head: t("Head line · tradition: thinking"),
+  life: t("Life line · tradition: life’s journey"),
+  fate: t("Fate line · tradition: direction"),
+  sun: t("Sun line · tradition: creativity"),
 }
 
 type Props = {

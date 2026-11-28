@@ -6,6 +6,7 @@ import StatusDot from '../components/StatusDot'
 import { STATUS_LABEL } from '../lib/status'
 import { HOW_STEPS, type HowStep } from './content'
 import { world } from './scene/state'
+import { t } from '../i18n'
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
@@ -19,7 +20,7 @@ function StepBody({ step }: { step: HowStep }) {
       <p className="font-display text-4xl italic text-accent-ink md:text-6xl" aria-hidden="true">
         {step.n}
       </p>
-      <h3 className="mt-2 font-display text-[clamp(1.85rem,4.4vw,4rem)] font-light leading-[1.02] tracking-tight">{step.title}</h3>
+      <h3 className="mt-2 font-display text-[calc(clamp(1.85rem,4.4vw,4rem)*var(--display-scale,1))] font-light leading-[1.02] tracking-tight">{step.title}</h3>
       <p className="mt-4 max-w-md text-[0.95rem] leading-relaxed text-muted md:mt-5 md:text-lg">{step.body}</p>
       {step.chips && (
         <ul className="mt-5 flex flex-wrap gap-2 text-sm md:mt-6">
@@ -91,7 +92,7 @@ function Pinned() {
       <div className="mx-auto flex h-full max-w-[88rem] items-end md:items-center">
         <div data-ui className="w-full md:w-[46%] lg:w-[40%] max-md:rounded-3xl max-md:bg-paper/75 max-md:p-6 max-md:backdrop-blur-md">
           <h2 id="how-title" className="kicker">
-            How it works
+            {t("How it works")}
           </h2>
 
           <div className="mt-5 grid">
@@ -102,7 +103,7 @@ function Pinned() {
             ))}
           </div>
 
-          <ol className="mt-8 flex items-center gap-2" aria-label="Progress through the six steps">
+          <ol className="mt-8 flex items-center gap-2" aria-label={t("Progress through the six steps")}>
             {HOW_STEPS.map((s, i) => (
               <li
                 key={s.n}
@@ -112,7 +113,7 @@ function Pinned() {
                 }`}
               >
                 <span className="sr-only">
-                  Step {i + 1}: {s.title}
+                  {t("Step")}{' '}{i + 1}: {s.title}
                 </span>
               </li>
             ))}
@@ -128,7 +129,7 @@ function Plain() {
     <section id="how" aria-labelledby="how-title" className="relative px-6 py-[16svh] md:px-12 lg:px-20">
       <div className="mx-auto max-w-[88rem]">
         <h2 id="how-title" className="kicker">
-          How it works
+          {t("How it works")}
         </h2>
         <ol className="mt-10 space-y-[22svh]">
           {HOW_STEPS.map((s) => (

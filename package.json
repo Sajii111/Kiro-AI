@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "build:server": "vite build --mode server --outDir dist-server --emptyOutDir",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:check": "node scripts/i18n_check.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

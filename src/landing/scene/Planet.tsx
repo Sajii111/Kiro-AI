@@ -7,6 +7,7 @@ import { palette } from './palette'
 import { clearTip, pick, rayAt, setTip } from './pick'
 import { planetMaterials } from './planetMaterials'
 import { world } from './state'
+import { t } from '../../i18n'
 
 // The ringed planet that rises over the horizon at the end of the journey (Night Sky only: Golden Hour has the sun).
 // It is a gas giant with a ring system, a small moon on a faint orbit, and a soft glow behind it.
@@ -144,7 +145,7 @@ export default function Planet() {
     const hit = live && !grabbed && pick.inside && pick.open && !pick.touch && !pick.dragging && hitTest(pick.x, pick.y)
     if (hit || grabbed) pick.wantGrab = 'planet'
     if (hit) {
-      setTip('planet', 'Drag to spin')
+      setTip('planet', t("Drag to spin"))
       world.hit = 'planet'
     } else {
       clearTip('planet')

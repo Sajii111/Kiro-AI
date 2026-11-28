@@ -3,6 +3,7 @@ import { BRAND } from '../../brand'
 import type { BoundaryKind, FeatureId, HandProfile, Message } from '../../api/types'
 import Icon from '../../components/ui/icons'
 import { featureNumber } from '../../lib/features'
+import { t, tServer } from '../../i18n'
 
 // One message in the chat. The assistant's answers can carry a few extras, all driven by flags from the server:
 //   - chips for the lines the answer was based on (point back at the hands)
@@ -19,17 +20,17 @@ export type MessageHandlers = {
 }
 
 const BOUNDARY_LABEL: Record<BoundaryKind, string> = {
-  medical: 'Outside what a reading can do: health',
-  financial: 'Outside what a reading can do: money',
-  employment: 'Outside what a reading can do: work',
-  relationship: 'Outside what a reading can do: relationships',
-  lifespan: 'The life line is not a clock',
-  prediction: 'The road ahead is read, not fixed',
-  not_seen: 'Not seen clearly in the photos, so not described',
-  off_topic: 'Outside what this reading covers',
+  medical: t("Outside what a reading can do: health"),
+  financial: t("Outside what a reading can do: money"),
+  employment: t("Outside what a reading can do: work"),
+  relationship: t("Outside what a reading can do: relationships"),
+  lifespan: t("The life line is not a clock"),
+  prediction: t("The road ahead is read, not fixed"),
+  not_seen: t("Not seen clearly in the photos, so not described"),
+  off_topic: t("Outside what this reading covers"),
 }
 
-const SECTION_LABEL = { summary: 'The summary', comparison: 'The comparison', uncertainty: 'What was unclear', themes: 'The themes', shape: 'The hand shape' } as const
+const SECTION_LABEL = { summary: t("The summary"), comparison: t("The comparison"), uncertainty: t("What was unclear"), themes: t("The themes"), shape: t("The hand shape") } as const
 
 export function AssistantAvatar() {
   return (
@@ -110,7 +111,7 @@ function useTyped(text: string, enabled: boolean, onTick: () => void) {
 
 export function Typing() {
   return (
-    <div className="flex gap-3" role="status" aria-label={`${BRAND.short} is writing a reply`}>
+    <div className="flex gap-3" role="status" aria-label={t("{short} is writing a reply", { short: BRAND.short })}>
       <AssistantAvatar />
       <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-md border border-ink/10 bg-surface px-4 py-3.5">
         {[0, 1, 2].map((i) => (
@@ -181,13 +182,13 @@ export default function MessageView({ message, animate, profiles, lineName, onTi
 
             {switchTo && (
               <button type="button" onClick={() => onSwitchProfile(switchTo.id)} className="btn btn-primary btn-sm">
-                Switch to {switchTo.name} <Icon name="arrow-right" size={14} />
+                {t('Switch to {name}', { name: switchTo.name })} <Icon name="arrow-right" size={14} />
               </button>
             )}
 
             {(section || (ids.length > 0 && !wholeReport)) && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted">Based on</span>
+                <span className="text-xs text-muted">{t("Based on")}</span>
                 {!wholeReport &&
                   ids.map((id) => (
                     <button
@@ -197,7 +198,7 @@ export default function MessageView({ message, animate, profiles, lineName, onTi
                       className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 py-0.5 pl-0.5 pr-2.5 text-xs transition-colors hover:border-accent"
                     >
                       <span className="grid h-5 w-5 place-items-center rounded-full bg-ink text-[0.65rem] font-semibold text-paper">{featureNumber(id)}</span>
-                      {lineName(id)}
+                      {t(lineName(id))}
                     </button>
                   ))}
                 {section && (
@@ -214,16 +215,16 @@ export default function MessageView({ message, animate, profiles, lineName, onTi
 
             {message.source === 'gemini' && (
               <p className="flex items-start gap-1.5 text-xs text-muted">
-                <Icon name="spark" size={13} className="mt-0.5 shrink-0" /> Written by Gemini from your results and our palmistry notes, and checked before it was shown.
+                <Icon name="spark" size={13} className="mt-0.5 shrink-0" /> {t("Written by Gemini from your results and our palmistry notes, and checked before it was shown.")}
               </p>
             )}
             {message.source === 'knowledge-base' && message.note && (
               <p className="flex items-start gap-1.5 text-xs text-muted">
-                <Icon name="info" size={13} className="mt-0.5 shrink-0" /> {message.note}
+                <Icon name="info" size={13} className="mt-0.5 shrink-0" /> {tServer(message.note)}
               </p>
             )}
 
-            {flags?.disclaimer && <p className="text-xs text-muted">An old art, not a science: a story about who you may become, not a promise.</p>}
+            {flags?.disclaimer && <p className="text-xs text-muted">{t("An old art, not a science: a story about who you may become, not a promise.")}</p>}
           </div>
         )}
       </div>

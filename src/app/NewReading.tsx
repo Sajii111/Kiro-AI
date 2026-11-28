@@ -20,6 +20,8 @@ import Processing from './new/Processing'
 import { isUsable, photoOf, type Slot } from './new/slots'
 import { initialStages, type PreviewMap, type StageMap } from './new/stages'
 import { CreateProfileModal } from './ProfileModals'
+import { t } from '../i18n'
+import { tx } from '../i18n/rich'
 
 // The new-reading flow: choose whose palms, add one photo of each, see the checks, then watch the reading being made.
 //
@@ -49,11 +51,11 @@ const isWorking = (slot: Slot) => slot.status === 'preparing' || slot.status ===
 function problemWith(side: HandSide, slot: Slot): string | null {
   switch (slot.status) {
     case 'empty':
-      return `Add your ${side} palm to continue.`
+      return t("Add your {side} palm to continue.", { side: side })
     case 'rejected':
-      return `Replace the ${side} palm photo: it could not be used.`
+      return t("Replace the {side} palm photo: it could not be used.", { side: side })
     case 'ready':
-      return slot.result.ok ? null : `Replace the ${side} palm photo: it did not pass the checks.`
+      return slot.result.ok ? null : t("Replace the {side} palm photo: it did not pass the checks.", { side: side })
     default:
       return null
   }
@@ -107,7 +109,7 @@ export default function NewReading() {
         photo = await preparePhoto(await source, kind !== null)
       } catch (err) {
         if (!current()) return
-        const message = err instanceof PhotoProblem ? err.message : 'This photo could not be opened. Please try another one.'
+        const message = err instanceof PhotoProblem ? err.message : t("This photo could not be opened. Please try another one.")
         setSlot(side, { status: 'rejected', name: label, message })
         return
       }
@@ -214,7 +216,7 @@ export default function NewReading() {
     runRef.current++
     abortRef.current?.abort()
     setPhase('photos')
-    toast('Cancelled. Nothing was saved.')
+    toast(t("Cancelled. Nothing was saved."))
   }
 
   const another = () => {
@@ -267,17 +269,17 @@ export default function NewReading() {
   const problems = SIDES.map((side) => problemWith(side, slots[side])).filter((text): text is string => text !== null)
   const bothEmpty = slots.left.status === 'empty' && slots.right.status === 'empty'
   const helper = !activeProfile
-    ? 'Choose or add a hand profile to continue.'
+    ? t("Choose or add a hand profile to continue.")
     : busy
-      ? 'Checking your photos…'
+      ? t("Checking your photos…")
       : canStart
         ? warned === 0
-          ? `Both photos passed. Ready to read ${activeProfile.name}’s palms.`
-          : `Both photos can be used, ${warned === 1 ? 'one has a note' : 'both have notes'}. Continue, or swap ${warned === 1 ? 'it' : 'them'} for a better photo.`
+          ? t("Both photos passed. Ready to read {name}’s palms.", { name: activeProfile.name })
+          : t("Both photos can be used, {0}. Continue, or swap {1} for a better photo.", { "0": warned === 1 ? 'one has a note' : 'both have notes', "1": warned === 1 ? 'it' : 'them' })
         : ready
           ? (nameProblem ?? '')
           : bothEmpty
-            ? 'Add a photo of each palm to continue.'
+            ? t("Add a photo of each palm to continue.")
             : problems.join(' ')
 
   const explain = () => {
@@ -312,9 +314,9 @@ export default function NewReading() {
 
   return (
     <div>
-      <p className="kicker">New reading</p>
-      <h1 className="mt-3 max-w-3xl text-balance font-display text-4xl font-light tracking-tight md:text-6xl">One clear photo of each palm.</h1>
-      <p className="mt-4 max-w-xl text-muted">Both photos are checked before anything is done with them. They are shrunk here in your browser and are never saved.</p>
+      <p className="kicker">{t("New reading")}</p>
+      <h1 className="mt-3 max-w-3xl text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{t("One clear photo of each palm.")}</h1>
+      <p className="mt-4 max-w-xl text-muted">{t("Both photos are checked before anything is done with them. They are shrunk here in your browser and are never saved.")}</p>
 
       <div className="mt-8">
         {profiles === null ? (
@@ -325,7 +327,14 @@ export default function NewReading() {
           <p className="card flex max-w-xl items-start gap-3 p-5 text-sm text-muted">
             <Icon name="shield" size={18} className="mt-0.5 shrink-0" />
             <span>
-              No profile is open: every profile is locked. <Link to="/app" className="underline">Unlock one with its palm</Link>, then come back to make a reading for it.
+              {t("No profile is open: every profile is locked.")}{' '}
+              {tx('{link}, then come back to make a reading for it.', {
+                link: (
+                  <Link to="/app" className="underline">
+                    {t('Unlock one with its palm')}
+                  </Link>
+                ),
+              })}
             </span>
           </p>
         ) : (
@@ -335,7 +344,7 @@ export default function NewReading() {
               {activeProfile.readingCount > 0 && (
                 // a profile can have many readings; this says what happens to the older ones, and which one the chat uses
                 <p className="mt-3 max-w-xl text-sm text-muted">
-                  This adds a new reading to {activeProfile.name}’s history ({plural(activeProfile.readingCount, 'reading')} so far). Earlier ones stay as they are. The chat uses the newest reading unless you pick another.
+                  {t('This adds a new reading to {name}’s history ({count} so far). Earlier ones stay as they are. The chat uses the newest reading unless you pick another.', { name: activeProfile.name, count: plural(activeProfile.readingCount, 'reading') })}
                 </p>
               )}
             </>
@@ -347,13 +356,13 @@ export default function NewReading() {
         <>
           <div id="reading-name" className="mt-8 max-w-md scroll-mt-28">
             <TextField
-              label="Name this reading (optional)"
+              label={t("Name this reading (optional)")}
               value={readingName}
               onChange={(e) => setReadingName(e.target.value)}
-              placeholder="For example: Before my trip"
+              placeholder={t("For example: Before my trip")}
               autoComplete="off"
               error={nameProblem}
-              hint="Without a name, the reading goes by its date. You can add or change it later."
+              hint={t("Without a name, the reading goes by its date. You can add or change it later.")}
             />
           </div>
 
@@ -375,7 +384,7 @@ export default function NewReading() {
           <div className="mt-6 grid gap-5 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <section aria-labelledby="tips-h" className="card p-6">
               <h2 id="tips-h" className="font-display text-xl font-normal">
-                For a photo that reads well
+                {t("For a photo that reads well")}
               </h2>
               <ul className="mt-4 space-y-3 text-sm">
                 {PHOTO_TIPS.map((tip) => (
@@ -390,14 +399,14 @@ export default function NewReading() {
             <section aria-labelledby="priv-h" className="card flex flex-col gap-4 p-6">
               <div>
                 <h2 id="priv-h" className="flex items-center gap-2 font-display text-xl font-normal">
-                  <Icon name="shield" size={18} className="text-accent-ink" /> Your photos
+                  <Icon name="shield" size={18} className="text-accent-ink" /> {t("Your photos")}
                 </h2>
                 <p className="mt-3 text-sm text-muted">{PHOTO_PRIVACY}</p>
               </div>
               <div className="mt-auto border-t border-ink/10 pt-4">
-                <p className="text-sm text-muted">No palm to hand? Try the screens with sample photos made from a drawing.</p>
+                <p className="text-sm text-muted">{t("No palm to hand? Try the screens with sample photos made from a drawing.")}</p>
                 <button type="button" onClick={useSamples} disabled={busy} className="btn btn-ghost btn-sm mt-3">
-                  <Icon name="spark" size={15} /> Use sample palms for both
+                  <Icon name="spark" size={15} /> {t("Use sample palms for both")}
                 </button>
               </div>
             </section>
@@ -418,7 +427,7 @@ export default function NewReading() {
                 aria-describedby="start-help"
                 onClick={canStart ? () => void start() : explain}
               >
-                Start reading <Icon name="arrow-right" size={17} />
+                {t("Start reading")}{' '}<Icon name="arrow-right" size={17} />
               </button>
             </div>
           </div>
@@ -435,12 +444,12 @@ function ProfilePicker({ profiles, active, onPick, onAdd }: { profiles: HandProf
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <Menu
         align="left"
-        ariaLabel={`Reading for ${active.name}. Choose whose palms these are`}
+        ariaLabel={t("Reading for {name}. Choose whose palms these are", { name: active.name })}
         button={
           <span className="flex items-center gap-3 rounded-full border border-ink/20 bg-surface py-1.5 pl-1.5 pr-4 transition-colors hover:border-accent">
             <PlanetAvatar seed={active.id} size={40} />
             <span className="text-left">
-              <span className="block text-xs leading-none text-muted">Reading for</span>
+              <span className="block text-xs leading-none text-muted">{t("Reading for")}</span>
               <span className="mt-1 block font-medium leading-none">{active.name}</span>
             </span>
             <Icon name="chevron-down" size={15} className="text-muted" />
@@ -464,7 +473,7 @@ function ProfilePicker({ profiles, active, onPick, onAdd }: { profiles: HandProf
                     <PlanetAvatar seed={p.id} size={34} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{p.name}</span>
-                      <span className="block text-xs text-muted">{p.locked ? 'Locked: unlock with the palm' : p.owner === 'self' ? 'My hands' : 'Shared with permission'}</span>
+                      <span className="block text-xs text-muted">{p.locked ? t("Locked: unlock with the palm") : p.owner === 'self' ? t("My hands") : t("Shared with permission")}</span>
                     </span>
                     {p.locked && <Icon name="shield" size={16} className="text-muted" />}
                     {p.id === active.id && <Icon name="check" size={16} className="text-accent-ink" />}
@@ -481,14 +490,14 @@ function ProfilePicker({ profiles, active, onPick, onAdd }: { profiles: HandProf
                 }}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-ink/5"
               >
-                <Icon name="plus" size={16} /> Add a profile
+                <Icon name="plus" size={16} /> {t("Add a profile")}
               </button>
             </div>
           </>
         )}
       </Menu>
       <p className="text-sm text-muted">
-        {active.owner === 'self' ? 'These are your own palms.' : `${active.name} has agreed to these palms being uploaded.`}
+        {active.owner === 'self' ? t("These are your own palms.") : t("{name} has agreed to these palms being uploaded.", { name: active.name })}
       </p>
     </div>
   )
@@ -501,12 +510,12 @@ function NoProfile({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="card flex flex-col items-start gap-5 p-8 md:flex-row md:items-center md:justify-between">
       <div className="max-w-xl">
-        <h2 className="font-display text-2xl font-normal">First, whose palms are these?</h2>
-        <p className="mt-2 text-muted">A reading belongs to a hand profile: yours, or someone who has said yes. It keeps their readings and chats apart from everyone else’s.</p>
+        <h2 className="font-display text-2xl font-normal">{t("First, whose palms are these?")}</h2>
+        <p className="mt-2 text-muted">{t("A reading belongs to a hand profile: yours, or someone who has said yes. It keeps their readings and chats apart from everyone else’s.")}</p>
       </div>
       <div className="flex flex-wrap gap-3">
         <button type="button" onClick={onAdd} className="btn btn-primary">
-          <Icon name="plus" size={16} /> Create a profile
+          <Icon name="plus" size={16} /> {t("Create a profile")}
         </button>
         {demo && (
           <button
@@ -520,7 +529,7 @@ function NoProfile({ onAdd }: { onAdd: () => void }) {
               setLoading(false)
             }}
           >
-            {loading && <Spinner />} Load sample profiles
+            {loading && <Spinner />} {t("Load sample profiles")}
           </button>
         )}
       </div>

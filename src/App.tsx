@@ -14,6 +14,7 @@ import NotBuilt from './pages/NotBuilt'
 import { DataProvider } from './state/data'
 import { SessionProvider } from './state/session'
 import { UiProvider } from './state/ui'
+import { t } from './i18n'
 
 // The landing page is cinematic and loads first. The app screens load on demand.
 const SignIn = lazy(() => import('./pages/SignIn'))
@@ -118,7 +119,7 @@ export default function App() {
                           <Route path="palm-lab" element={<PalmLab />} />
                           <Route path="*" element={<NotFound />} />
                         </Route>
-                        <Route path="*" element={<NotBuilt title="Nothing here" note="That page does not exist." />} />
+                        <Route path="*" element={<NotBuilt title={t("Nothing here")} note={t("That page does not exist.")} />} />
                       </Routes>
                     </Suspense>
                   </>

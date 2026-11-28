@@ -3,6 +3,7 @@ import { api } from '../api'
 import { errorMessage, SESSION_LOST_EVENT } from '../api/errors'
 import type { DataCounts, RestoreResult, Session, SignInInput, SignUpInput } from '../api/types'
 import { forgetAllPhotos } from './media'
+import { t } from '../i18n'
 
 // Who is using the app: nobody yet, a guest (temporary, nothing saved), or a signed-in person.
 
@@ -27,8 +28,8 @@ type SessionState = {
 
 const SessionContext = createContext<SessionState | null>(null)
 
-const EXPIRED_NOTICE = 'Your guest session ended, and nothing from it was saved. You can start a new one any time.'
-const ENDED_NOTICE = 'Your session ended, so we signed you out. Please sign in again to carry on.'
+const EXPIRED_NOTICE = t("Your guest session ended, and nothing from it was saved. You can start a new one any time.")
+const ENDED_NOTICE = t("Your session ended, so we signed you out. Please sign in again to carry on.")
 
 /** What a guest session still holds, or null. Asking is a courtesy: if it fails, nobody should be kept from getting in. */
 async function guestLeftovers(): Promise<DataCounts | null> {

@@ -167,6 +167,32 @@ Each assistant message carries `source` (`"gemini"` or `"knowledge-base"`) and, 
 a `note`. The website labels them. When the fixed wording answers a "Will I ...?" question it speaks from the themes of the
 report, so that it too is a prediction in the reader's voice.
 
+## 5a. Sinhala and Tamil (`app/llm/translate.py`, `translate 1.1`)
+
+The website can be shown in English, Sinhala or Tamil, and a new reading or chat answer is shown in the chosen language. Every
+check in section 4 works on English words, so the order never changes: **write and check in English, then translate.**
+
+1. The report (or the chat answer) is written exactly as above, in English, and every passage Gemini wrote has passed the guard.
+2. One more request asks Gemini to translate the finished texts into Sinhala or Tamil: faithfully, adding nothing, in plain
+   everyday words for people in Sri Lanka, keeping "Kiro" and "Gemini" as they are, never adding a number, a date or a link, and
+   using a small glossary so the terms match the website (හෘදය රේඛාව / இதய ரேகை for the heart line, හස්ත රේඛා කියවීම / கைரேகை பலன் for a reading, and so on). It is also told to write natural Sinhala or Tamil rather than word for word. The texts go
+   as one JSON object (identical texts once, in parts of about 3,500 characters) and come back with the same keys.
+3. Each translation is checked: it must be mostly in the right script (Sinhala U+0D80–U+0DFF, Tamil U+0B80–U+0BFF), add no digit
+   or link that the English did not have, and be neither far longer nor far shorter than the English. A text that fails is asked
+   for once more; after that the English stays for that text, and `meta.note` (or the chat message's `note`) says so.
+
+For a reading this covers all of the report's texts, also the ones the server wrote (what the photos show, the disclaimer), so
+the page reads in one language. `meta.language` records it. A busy Gemini, no key, or repeated failures leave the English
+reading as it was, with a note; a sample reading is never sent. For a chat answer (Gemini's or the fixed wording) the profiles'
+names are swapped for placeholders (NAME1, ...) before the request and put back afterwards, so a name in a fixed answer never
+leaves the server. The person's question may be in Sinhala or Tamil; Gemini still answers in English first, and the plain-code
+boundaries in `chat.py` (English word patterns) may miss such a question, but the model's `intent` field still sends health,
+lifespan and advice questions to the fixed wording.
+
+**Limits.** The translation is Gemini's and is not reviewed by a native speaker; the checks only make sure it is in the right
+script and adds no numbers or links. A translation can still soften or shift a sentence's meaning. The website's own words
+(menus, buttons, notes) are a fixed Sinhala and Tamil dictionary in `src/i18n/` and need a native speaker's review too.
+
 ## 6. What leaves the computer
 
 Photos are **never** sent to Gemini. The report request carries:
@@ -182,7 +208,8 @@ with a bracketed word. This is not a promise that nothing personal can ever be t
 chat box, that questions are sent to Gemini. `tests/test_privacy.py` runs the whole API and checks that no profile name, contact
 detail, file name or photo bytes reach the model. The name a person may give a reading is added to the reading only after the
 report is written and is not used by any prompt, so it never reaches the model either; a test names a reading and checks the
-report and chat requests for it.
+report and chat requests for it. A translation request (section 5a) carries only texts that already passed these rules, with
+the profiles' names swapped out (`tests/test_translate.py` checks both).
 
 **Free tier.** On Google's free Gemini tier, what is sent may be used to improve Google's products, and reviewers may read it.
 That is the price of the free key, so it is said on screen (the report's "How this reading was made", the chat box, Settings,
@@ -340,6 +367,8 @@ a date or an age, speaks of health, money or bad luck, gives an order, or shows 
 - **A less capable model may write plainer words.** The fall-back models are chosen for being available, not for being the
   smartest; the knowledge base and the checks keep what they write inside the same limits, and `meta.model` says which one wrote.
 - **The findings are only as good as the photo analysis.** A line the analysis misses is simply not described.
+- **Sinhala and Tamil are translations.** They are written by Gemini from the checked English and are not reviewed by a native
+  speaker (section 5a). Each one costs one more Gemini request, so on a busy day a reading may stay in English.
 
 ## 11. Where things are
 
@@ -353,6 +382,8 @@ a date or an age, speaks of health, money or bad luck, gives an order, or shows 
 | The report writer | `backend/app/llm/writer.py`, with the fixed wording in `report.py` and `knowledge.py` |
 | The chat | `backend/app/llm/chat_llm.py`, with the fixed rules in `chat.py` |
 | What is removed from a question | `backend/app/llm/privacy.py` |
+| Readings and chat answers in Sinhala or Tamil | `backend/app/llm/translate.py` |
+| The website's own words in Sinhala and Tamil | `src/i18n/` (`si.json`, `ta.json`; `npm run i18n:check` lists what is missing) |
 | Settings (`GEMINI_*`) | `backend/app/core/config.py`, `backend/.env.example` |
 
 **To change something.** A different model: set `GEMINI_MODEL` in `backend/.env` (one name, or several separated by commas); the

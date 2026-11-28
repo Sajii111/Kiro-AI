@@ -285,12 +285,12 @@ Do not trust that. Validate again on the server, cap the decoded pixel count, an
 
 ### `POST /readings`
 
-`multipart/form-data` with `profileId` (text), `left` (file), `right` (file) and, optionally, `name` (text: what the person calls this reading, see [A reading's name](#a-readings-name)) and `leftSample` and `rightSample` (`1`, with the same meaning as `sample` above). Runs the whole pipeline on both photos and
+`multipart/form-data` with `profileId` (text), `left` (file), `right` (file) and, optionally, `name` (text: what the person calls this reading, see [A reading's name](#a-readings-name)), `language` (`en`, `si` or `ta`: the language the report is shown in, see [A reading's language](#a-readings-language)) and `leftSample` and `rightSample` (`1`, with the same meaning as `sample` above). Runs the whole pipeline on both photos and
 answers with a **stream of server-sent events** on one response. The website reads it with `fetch`, so it is an ordinary
 `POST`, not an `EventSource`.
 
 Before the first byte of the stream, problems are ordinary JSON errors: `404` unknown profile, `422` a missing or invalid
-photo, a `name` that breaks the rules (or a request over the size limit), `401` not signed in, `410` a guest session that has ended. The server must **check
+photo, a `name` that breaks the rules, a `language` other than `en`, `si` or `ta` (or a request over the size limit), `401` not signed in, `410` a guest session that has ended. The server must **check
 both photos again** (the same checks as `/photos/validate`); a photo that fails stops the reading, with its sentence in the
 `422`. `backend/` works on at most three readings at once, and the rest wait their turn.
 
@@ -379,6 +379,24 @@ It is **optional**. A reading without one is called by whose it is and its date,
 - **Characters.** Letters, numbers, spaces and `' ’ . , ! ? & : ( ) -`. Nothing that looks like an email, a link or a phone number (no run of five or more digits). Unlike a profile's name it does not have to be unique: two readings may share a name.
 - **A name that breaks the rules** is `422 invalid` with a sentence, for example *"Keep the name to 40 characters or fewer."* On `POST /readings` it is checked **before any photo is processed**, so no work is spent on a request that will be refused. The website checks the same rules as the person types, with the same sentences.
 - **It never goes to Gemini.** The name is added to the reading after the report has been written, and no prompt (report or chat) is built from it. It is part of `GET /readings/{id}`, of `GET /readings`, and of the account export, and in the online database it is kept with the reading.
+
+### A reading's language
+
+The website can be shown in English, Sinhala or Tamil (the language switch in the headers and in Settings), and it sends that
+choice as `language` on `POST /readings` and on every chat question. Leaving it out means `en`.
+
+- **Written and checked in English first.** The report is written exactly as before (fixed rules, then Gemini's passages, each
+  checked by the guard, whose rules are English word patterns). Only then, for `si` or `ta`, one more Gemini request translates the
+  finished report's texts (every `title`, `observed` text, `traditional` passage, `comparison`, the `summary`, `uncertainty` and the
+  `disclaimer`) and each translation is checked: it must be in the right script, add no number or link the English did not have,
+  and be of a sensible length. A text that fails is asked for once more, then stays in English.
+- **`meta.language`** is `"si"` or `"ta"` when at least one text was translated; it is left out for English. `meta.note` says so
+  when a reading (or part of it) stayed in English, for example *"This reading could not be translated into Tamil, so it is shown
+  in English."*
+- **Never translated:** a sample reading (nothing from it goes to Gemini), and anything on a server without a Gemini key (the
+  reading is then English, and the note says why). The JSON keys, ids, statuses and `featureId`s never change with the language.
+- **Nothing personal goes with it:** the translation request carries only the report's texts, which hold no name.
+- A reading keeps the language it was made in; switching the website's language later does not translate old readings.
 
 ---
 
@@ -546,6 +564,7 @@ type ReadingMeta = {
   pipeline: string        // version of the image-processing pipeline
   mock: boolean           // true when this reading came from the sample backend or from the stand-in analysis. false when the lines were found in the person's own photos
   note?: string           // one plain sentence on how the words were written: which passages Gemini wrote, and why any came from the knowledge base instead. Left out when there is nothing to say (no key, or a sample reading)
+  language?: 'si' | 'ta'  // the language the report's texts were translated into (see "A reading's language"). Left out for English
 }
 ```
 
@@ -603,7 +622,7 @@ type Message = {
 | `GET /conversations?readingId=&profileId=` | Both filters optional. Most recently updated first. |
 | `POST /readings/{id}/conversations` | No body. Creates an empty conversation titled `"New chat"`. |
 | `GET /conversations/{id}` | The conversation with its messages. |
-| `POST /conversations/{id}/messages` | Body `{ "text": "..." }`, 1 to 500 characters (otherwise `422 invalid`). Stores the question, asks the model, stores the answer, returns **both**: `{ "user": Message, "assistant": Message }`. |
+| `POST /conversations/{id}/messages` | Body `{ "text": "...", "language": "si" }` (`language` is optional: `en`, the default, `si` or `ta`), 1 to 500 characters (otherwise `422 invalid`). The answer is written and checked in English, then translated into `language` by Gemini, with the profiles' names swapped for placeholders so they never leave the server; when that fails the English answer is stored with a `note`. Stores the question, asks the model, stores the answer, returns **both**: `{ "user": Message, "assistant": Message }`. |
 | `DELETE /conversations/{id}` | Removes the conversation and its messages. Returns a `DeleteSummary`. |
 
 When the first question is sent to a chat titled `"New chat"`, the title becomes that question (cut at 48 characters).

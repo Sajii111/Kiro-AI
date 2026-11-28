@@ -15,6 +15,8 @@ import { PROFILE_NAME_MAX, validateProfileName } from '../lib/validate'
 import { useData } from '../state/data'
 import { useSession } from '../state/session'
 import { CONSENT_NOTE } from './copy'
+import { t } from '../i18n'
+import { tx } from '../i18n/rich'
 
 // Create, rename and delete a hand profile. Used on the dashboard and inside the new-reading flow.
 
@@ -23,7 +25,7 @@ type CreateProps = { open: boolean; onClose: () => void; onCreated?: (profile: H
 export function CreateProfileModal({ open, onClose, onCreated }: CreateProps) {
   const [busy, setBusy] = useState(false)
   return (
-    <Modal open={open} onClose={onClose} title="Add a hand profile" lead="Each profile has its own readings and chats, so nothing gets mixed up between people." locked={busy}>
+    <Modal open={open} onClose={onClose} title={t("Add a hand profile")} lead={t("Each profile has its own readings and chats, so nothing gets mixed up between people.")} locked={busy}>
       <CreateForm onClose={onClose} onCreated={onCreated} onBusy={setBusy} />
     </Modal>
   )
@@ -55,7 +57,7 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
     setFormError(null)
     if (bad) return
     if (owner === 'other' && !consent) {
-      setFormError('Please confirm that this person has agreed to you uploading their palms.')
+      setFormError(t("Please confirm that this person has agreed to you uploading their palms."))
       return
     }
     setBusy(true)
@@ -63,7 +65,7 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
       const created = await api.createProfile({ name, owner, consent: owner === 'self' ? true : consent })
       refresh()
       setActiveProfileId(created.id)
-      toast(`Added ${created.name}.`)
+      toast(t("Added {name}.", { name: created.name }))
       onCreated?.(created)
       setBusy(false)
       onClose()
@@ -77,18 +79,18 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
       <TextField
-        label="Name"
+        label={t("Name")}
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={PROFILE_NAME_MAX + 10}
         autoComplete="off"
         autoFocus
-        hint="A first name or nickname is plenty."
+        hint={t("A first name or nickname is plenty.")}
         error={nameError}
       />
 
       <fieldset>
-        <legend className="mb-2 text-sm font-medium">Whose hands are these?</legend>
+        <legend className="mb-2 text-sm font-medium">{t("Whose hands are these?")}</legend>
         <div className="grid grid-cols-2 gap-3">
           {(['self', 'other'] as const).map((value) => (
             <ChoiceCard
@@ -97,8 +99,8 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
               value={value}
               checked={owner === value}
               onChange={() => setOwner(value)}
-              title={value === 'self' ? 'Mine' : 'Someone else'}
-              note={value === 'self' ? 'My own palms' : 'They have said yes'}
+              title={value === 'self' ? t("Mine") : t("Someone else")}
+              note={value === 'self' ? t("My own palms") : t("They have said yes")}
             />
           ))}
         </div>
@@ -108,7 +110,7 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
         <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-accent2/20 p-4 text-sm">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--accent-ink)]" />
           <span>
-            <strong className="font-medium">This person has agreed</strong> to me uploading their palms.
+            {tx('{agreed} to me uploading their palms.', { agreed: <strong className="font-medium">{t('This person has agreed')}</strong> })}
             <span className="mt-1 block text-xs text-muted">{CONSENT_NOTE}</span>
           </span>
         </label>
@@ -118,8 +120,8 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
         <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-ink/15 p-4 text-sm">
           <input type="checkbox" checked={lockNext} onChange={(e) => setLockNext(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--accent-ink)]" />
           <span>
-            <strong className="font-medium">Lock it with a palm</strong> (optional)
-            <span className="mt-1 block text-xs text-muted">Its readings and chats then open only after the palm is shown. You can also add a lock later.</span>
+            <strong className="font-medium">{t("Lock it with a palm")}</strong> {t('(optional)')}
+            <span className="mt-1 block text-xs text-muted">{t("Its readings and chats then open only after the palm is shown. You can also add a lock later.")}</span>
           </span>
         </label>
       )}
@@ -132,10 +134,10 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
 
       <div className="flex flex-wrap justify-end gap-3 pt-1">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Cancel
+          {t("Cancel")}
         </button>
         <button type="submit" disabled={busy} className="btn btn-primary">
-          {busy && <Spinner />} {canLock && lockNext ? 'Add, then lock' : 'Add profile'}
+          {busy && <Spinner />} {canLock && lockNext ? t("Add, then lock") : t("Add profile")}
         </button>
       </div>
     </form>
@@ -144,7 +146,7 @@ function CreateForm({ onClose, onCreated, onBusy }: { onClose: () => void; onCre
 
 export function RenameProfileModal({ profile, onClose }: { profile: HandProfile | null; onClose: () => void }) {
   return (
-    <Modal open={!!profile} onClose={onClose} title="Rename profile">
+    <Modal open={!!profile} onClose={onClose} title={t("Rename profile")}>
       {profile && <RenameForm key={profile.id} profile={profile} onClose={onClose} />}
     </Modal>
   )
@@ -175,13 +177,13 @@ function RenameForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
 
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
-      <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} autoFocus autoComplete="off" error={error} hint="A first name or nickname is plenty." />
+      <TextField label={t("Name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus autoComplete="off" error={error} hint={t("A first name or nickname is plenty.")} />
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Cancel
+          {t("Cancel")}
         </button>
         <button type="submit" disabled={busy} className="btn btn-primary">
-          {busy && <Spinner />} Save
+          {busy && <Spinner />} {t("Save")}
         </button>
       </div>
     </form>
@@ -190,7 +192,7 @@ function RenameForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
 
 export function DeleteProfileModal({ profile, onClose }: { profile: HandProfile | null; onClose: () => void }) {
   return (
-    <Modal open={!!profile} onClose={onClose} title={profile ? `Delete ${profile.name}?` : 'Delete profile'}>
+    <Modal open={!!profile} onClose={onClose} title={profile ? t("Delete {name}?", { name: profile.name }) : t("Delete profile")}>
       {profile && <DeleteForm key={profile.id} profile={profile} onClose={onClose} />}
     </Modal>
   )
@@ -213,7 +215,7 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
     try {
       const gone = await api.deleteProfile(profile.id, profile.locked ? password : undefined)
       refresh()
-      toast(`Deleted ${profile.name}: ${plural(gone.readings, 'reading')}, ${plural(gone.conversations, 'chat')} and ${plural(gone.messages, 'message')} removed.`)
+      toast(t("Deleted {name}: {1}, {2} and {3} removed.", { name: profile.name, "1": plural(gone.readings, 'reading'), "2": plural(gone.conversations, 'chat'), "3": plural(gone.messages, 'message') }))
       onClose()
     } catch (err) {
       setError(errorMessage(err))
@@ -223,37 +225,37 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">This permanently removes the profile and everything that belongs to it. It cannot be undone.</p>
+      <p className="text-sm text-muted">{t("This permanently removes the profile and everything that belongs to it. It cannot be undone.")}</p>
       <ul className="space-y-2 rounded-2xl bg-ink/5 p-4 text-sm">
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
           <span>
-            {profile.locked ? 'All its readings' : readings.loading || !readings.data ? 'Counting…' : `${plural(readings.data.length, 'reading')}`} and their results and reports
+            {profile.locked ? t('All its readings, with their results and reports') : readings.loading || !readings.data ? t("Counting…") : t('{count}, with their results and reports', { count: plural(readings.data.length, 'reading') })}
           </span>
         </li>
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
-          <span>{profile.locked ? 'All its chats' : chats === undefined ? 'Counting…' : `${plural(chats, 'chat')}`} with every message in them</span>
+          <span>{profile.locked ? t('All its chats, with every message in them') : chats === undefined ? t("Counting…") : t('{count}, with every message in them', { count: plural(chats, 'chat') })}</span>
         </li>
         {profile.lock && (
           <li className="flex items-center gap-2">
             <Icon name="trash" size={16} className="text-danger" />
-            <span>Its palm lock (the encrypted template)</span>
+            <span>{t("Its palm lock (the encrypted template)")}</span>
           </li>
         )}
         <li className="flex items-center gap-2 text-muted">
           <Icon name="check" size={16} />
-          <span>Photos were never saved, so there is nothing else to remove.</span>
+          <span>{t("Photos were never saved, so there is nothing else to remove.")}</span>
         </li>
       </ul>
       {profile.locked && (
         <TextField
-          label="Account password"
+          label={t("Account password")}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          hint={`${profile.name} is locked, so your password stands in for the palm (or unlock it first). This is written to the attempt log.`}
+          hint={t("{name} is locked, so your password stands in for the palm (or unlock it first). This is written to the attempt log.", { name: profile.name })}
         />
       )}
       {error && (
@@ -263,10 +265,10 @@ function DeleteForm({ profile, onClose }: { profile: HandProfile; onClose: () =>
       )}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Keep it
+          {t("Keep it")}
         </button>
         <button type="button" onClick={remove} disabled={busy || readings.loading || (profile.locked && !password)} className="btn btn-danger">
-          {busy && <Spinner />} Delete {profile.name}
+          {busy && <Spinner />} {t('Delete {name}', { name: profile.name })}
         </button>
       </div>
     </div>

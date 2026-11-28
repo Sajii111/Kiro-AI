@@ -15,15 +15,16 @@ import Chat from './reading/Chat'
 import LinesSection from './reading/LinesSection'
 import ReportSection, { type ReportView } from './reading/ReportSection'
 import { DeleteReadingModal, RenameReadingModal } from './ReadingModals'
+import { t } from '../i18n'
 
 // One reading: the annotated lines, the written report and the chat.
 // Wide screens show all three (the chat stays in view on the right); narrower ones show one at a time.
 
 type Tab = 'lines' | 'report' | 'chat'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'lines', label: 'Lines' },
-  { id: 'report', label: 'Report' },
-  { id: 'chat', label: 'Chat' },
+  { id: 'lines', label: t("Lines") },
+  { id: 'report', label: t("Report") },
+  { id: 'chat', label: t("Chat") },
 ]
 
 type Section = 'summary' | 'comparison' | 'uncertainty' | 'themes' | 'shape'
@@ -40,7 +41,7 @@ export default function ReadingPage() {
   const { id = '' } = useParams()
   const reading = useResource(() => api.getReading(id), [id])
 
-  if (reading.error) return <NotFound title="That reading is not here" note="It may have been deleted, or the link may be wrong." />
+  if (reading.error) return <NotFound title={t("That reading is not here")} note={t("It may have been deleted, or the link may be wrong.")} />
   if (reading.data === undefined) {
     return (
       <div aria-busy="true" className="space-y-6">
@@ -95,9 +96,9 @@ function ReadingView({ reading, onRenamed }: { reading: Reading; onRenamed: () =
   }, [profileId, setActiveProfileId])
 
   const counts = countStatuses(reading)
-  const name = profile?.name ?? 'This reading'
+  const name = profile?.name ?? t("This reading")
   // a reading the person named goes by that name; otherwise it is "<profile>’s palms", as before
-  const title = reading.name ?? `${name}’s palms`
+  const title = reading.name ?? t("{name}’s palms", { name: name })
 
   const focusLine = (id: FeatureId) => {
     setSelected(id)
@@ -113,7 +114,7 @@ function ReadingView({ reading, onRenamed }: { reading: Reading; onRenamed: () =
   const switchTo = async (profileId: string) => {
     const target = profiles?.find((p) => p.id === profileId)
     setActiveProfileId(profileId)
-    toast(`Switched to ${target?.name ?? 'that profile'}. Their chat starts fresh.`)
+    toast(t("Switched to {0}. Their chat starts fresh.", { "0": target?.name ?? 'that profile' }))
     try {
       const mine = await api.listReadings(profileId)
       navigate(mine[0] ? `/app/readings/${mine[0].id}` : '/app/new')
@@ -127,57 +128,57 @@ function ReadingView({ reading, onRenamed }: { reading: Reading; onRenamed: () =
       <header>
         <div className="flex items-center justify-between gap-3">
           <Link to="/app" className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-ink">
-            <Icon name="arrow-left" size={16} /> All readings
+            <Icon name="arrow-left" size={16} /> {t("All readings")}
           </Link>
           <div className="flex gap-2">
-            <Link to="/app/new" aria-label="New reading" title="New reading" className="btn btn-ghost btn-sm">
+            <Link to="/app/new" aria-label={t("New reading")} title={t("New reading")} className="btn btn-ghost btn-sm">
               <Icon name="plus" size={15} />
-              <span className="hidden sm:inline">New reading</span>
+              <span className="hidden sm:inline">{t("New reading")}</span>
             </Link>
             <button
               type="button"
               onClick={() => setRenaming(true)}
-              aria-label={reading.name ? 'Rename this reading' : 'Name this reading'}
-              title={reading.name ? 'Rename this reading' : 'Name this reading'}
+              aria-label={reading.name ? t("Rename this reading") : t("Name this reading")}
+              title={reading.name ? t("Rename this reading") : t("Name this reading")}
               className="btn btn-ghost btn-sm"
             >
               <Icon name="pencil" size={15} />
-              <span className="hidden sm:inline">{reading.name ? 'Rename' : 'Add name'}</span>
+              <span className="hidden sm:inline">{reading.name ? t("Rename") : t("Add name")}</span>
             </button>
             <button
               type="button"
               onClick={() => setDeleting(true)}
-              aria-label="Delete this reading"
-              title="Delete this reading"
+              aria-label={t("Delete this reading")}
+              title={t("Delete this reading")}
               className="btn btn-ghost btn-sm hover:!border-danger hover:!bg-danger/10 hover:!text-danger"
             >
               <Icon name="trash" size={15} />
-              <span className="hidden sm:inline">Delete</span>
+              <span className="hidden sm:inline">{t("Delete")}</span>
             </button>
           </div>
         </div>
 
         <p className="kicker mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
-          {reading.name ? `${name}’s palms` : 'Reading'} · {formatDate(reading.createdAt)}
-          {reading.meta.mock && <span className="rounded-full bg-uncertain/25 px-3 py-0.5 text-xs font-medium normal-case tracking-normal text-ink">Sample reading</span>}
+          {reading.name ? t("{name}’s palms", { name: name }) : t("Reading")} · {formatDate(reading.createdAt)}
+          {reading.meta.mock && <span className="rounded-full bg-uncertain/25 px-3 py-0.5 text-xs font-medium normal-case tracking-normal text-ink">{t("Sample reading")}</span>}
         </p>
         <div className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-3">
           <h1 className="text-balance font-display text-4xl font-light tracking-tight [overflow-wrap:anywhere] md:text-5xl">{title}</h1>
           <p className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
             <span className="flex items-center gap-1.5">
-              <StatusDot status="detected" /> {counts.detected} detected
+              <StatusDot status="detected" /> {counts.detected} {t("detected")}
             </span>
             <span className="flex items-center gap-1.5">
-              <StatusDot status="uncertain" /> {counts.uncertain} uncertain
+              <StatusDot status="uncertain" /> {counts.uncertain} {t("uncertain")}
             </span>
             <span className="flex items-center gap-1.5">
-              <StatusDot status="not_visible" /> {counts.not_visible} not visible
+              <StatusDot status="not_visible" /> {counts.not_visible} {t("not visible")}
             </span>
           </p>
         </div>
       </header>
 
-      <div role="tablist" aria-label="Parts of this reading" className="mt-6 flex gap-1 rounded-full border border-ink/15 bg-surface/80 p-1 text-sm xl:hidden">
+      <div role="tablist" aria-label={t("Parts of this reading")} className="mt-6 flex gap-1 rounded-full border border-ink/15 bg-surface/80 p-1 text-sm xl:hidden">
         {TABS.map((t) => (
           <button
             key={t.id}

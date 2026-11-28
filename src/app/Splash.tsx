@@ -1,5 +1,6 @@
 import { BRAND } from '../brand'
 import TransitionMark from '../components/TransitionMark'
+import { t } from '../i18n'
 
 /** A still, quiet screen for the moment while something loads (the first visit to a page whose code is still arriving). */
 export default function Splash({ label }: { label?: string }) {
@@ -12,7 +13,7 @@ export default function Splash({ label }: { label?: string }) {
           <span className="text-accent-ink">.</span>
         </p>
         <p role="status" className="mt-3 text-sm text-muted">
-          {label ?? 'Just a moment…'}
+          {label ?? t("Just a moment…")}
         </p>
       </div>
     </main>

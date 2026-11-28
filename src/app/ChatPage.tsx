@@ -10,11 +10,12 @@ import PlanetAvatar from '../components/ui/PlanetAvatar'
 import { useToast } from '../components/ui/Toast'
 import { FEATURE_ORDER } from '../lib/features'
 import { formatDate, plural } from '../lib/format'
-import { countStatuses } from '../lib/readings'
+import { countStatuses, headlineText } from '../lib/readings'
 import { STATUS_LABEL } from '../lib/status'
 import { useResource } from '../lib/useResource'
 import { useData } from '../state/data'
 import Chat from './reading/Chat'
+import { t } from '../i18n'
 
 // The Chat page: talk about ONE reading.
 //
@@ -40,7 +41,7 @@ function Empty({ title, children }: { title: string; children: React.ReactNode }
     <div className="card mt-8 flex flex-col items-start gap-5 p-8 md:flex-row md:items-center md:justify-between md:p-10">
       <div className="max-w-xl">
         <h2 className="font-display text-2xl font-normal">{title}</h2>
-        <p className="mt-2 text-muted">A chat talks about one reading: the lines that were found in it, and the lines that were not.</p>
+        <p className="mt-2 text-muted">{t("A chat talks about one reading: the lines that were found in it, and the lines that were not.")}</p>
       </div>
       <div className="flex flex-wrap gap-3">{children}</div>
     </div>
@@ -63,57 +64,57 @@ function ReadingData({ reading, profile, newest, onChange }: { reading: Reading;
   const [open] = useState(() => window.matchMedia('(min-width: 1280px)').matches)
 
   return (
-    <aside aria-label="Reading data used by this chat" className="card p-5 md:p-6 xl:sticky xl:top-[7.5rem] xl:self-start">
+    <aside aria-label={t("Reading data used by this chat")} className="card p-5 md:p-6 xl:sticky xl:top-[7.5rem] xl:self-start">
       <p className="kicker flex items-center gap-2">
-        <Icon name="book" size={15} /> Reading in this chat
+        <Icon name="book" size={15} /> {t("Reading in this chat")}
       </p>
       <div className="mt-4 flex items-center gap-3.5">
         <PlanetAvatar seed={profile.id} size={52} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-xl leading-tight">{profile.name}</p>
           <p className="text-sm text-muted [overflow-wrap:anywhere]">
-            {reading.name ? `“${reading.name}” · ${formatDate(reading.createdAt)}` : `Reading of ${formatDate(reading.createdAt)}`}
-            {newest && ' · newest'}
+            {reading.name ? `“${reading.name}” · ${formatDate(reading.createdAt)}` : t("Reading of {0}", { "0": formatDate(reading.createdAt) })}
+            {newest && t(" · newest")}
           </p>
         </div>
         {/* on narrow screens the way to change the reading is right here, without opening anything */}
         <button type="button" onClick={onChange} className="btn btn-ghost btn-sm shrink-0 xl:hidden">
-          <Icon name="download" size={15} /> Change
+          <Icon name="download" size={15} /> {t("Change")}
         </button>
       </div>
 
       {/* open on wide screens; tucked away on narrow ones so the chat itself is not pushed off the screen */}
       <details open={open} className="group mt-4 border-t border-ink/10 pt-3">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg text-sm font-medium [&::-webkit-details-marker]:hidden">
-          What the chat can see
+          {t("What the chat can see")}
           <Icon name="chevron-down" size={16} className="text-muted transition-transform group-open:rotate-180" />
         </summary>
 
-        {reading.meta.mock && <p className="mt-3 inline-block rounded-full bg-uncertain/25 px-3 py-0.5 text-xs font-medium text-ink">Sample reading</p>}
+        {reading.meta.mock && <p className="mt-3 inline-block rounded-full bg-uncertain/25 px-3 py-0.5 text-xs font-medium text-ink">{t("Sample reading")}</p>}
         <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
           <span className="flex items-center gap-1.5">
-            <StatusDot status="detected" /> {counts.detected} detected
+            <StatusDot status="detected" /> {counts.detected} {t("detected")}
           </span>
           <span className="flex items-center gap-1.5">
-            <StatusDot status="uncertain" /> {counts.uncertain} uncertain
+            <StatusDot status="uncertain" /> {counts.uncertain} {t("uncertain")}
           </span>
           <span className="flex items-center gap-1.5">
-            <StatusDot status="not_visible" /> {counts.not_visible} not visible
+            <StatusDot status="not_visible" /> {counts.not_visible} {t("not visible")}
           </span>
         </p>
 
         <table className="mt-3 w-full text-sm">
-          <caption className="sr-only">What was found for each line, on each hand</caption>
+          <caption className="sr-only">{t("What was found for each line, on each hand")}</caption>
           <thead>
             <tr className="text-left text-xs text-muted">
               <th scope="col" className="pb-2 font-medium">
-                Line
+                {t("Line")}
               </th>
               <th scope="col" className="pb-2 font-medium">
-                Left
+                {t("Left")}
               </th>
               <th scope="col" className="pb-2 font-medium">
-                Right
+                {t("Right")}
               </th>
             </tr>
           </thead>
@@ -124,7 +125,7 @@ function ReadingData({ reading, profile, newest, onChange }: { reading: Reading;
               return (
                 <tr key={id} className="border-t border-ink/10">
                   <th scope="row" className="py-2 pr-2 text-left font-normal">
-                    {left?.name ?? id}
+                    {left ? t(left.name) : id}
                   </th>
                   <td className="py-2 pr-2">
                     <Finding feature={left} />
@@ -140,14 +141,14 @@ function ReadingData({ reading, profile, newest, onChange }: { reading: Reading;
 
         <div className="mt-5 flex flex-col gap-2">
           <button type="button" onClick={onChange} className="btn btn-ghost btn-sm w-full max-xl:hidden">
-            <Icon name="download" size={15} /> Import another reading
+            <Icon name="download" size={15} /> {t("Import another reading")}
           </button>
           <Link to={`/app/readings/${reading.id}`} className="btn btn-ghost btn-sm w-full">
-            <Icon name="eye" size={15} /> Open the full reading
+            <Icon name="eye" size={15} /> {t("Open the full reading")}
           </Link>
         </div>
         <p className="mt-4 text-xs leading-relaxed text-muted">
-          Only these results and the report go to the chat. Photos are never stored. A chat uses one reading, so importing a different one starts a fresh chat and two readings never mix.
+          {t("Only these results and the report go to the chat. Photos are never stored. A chat uses one reading, so importing a different one starts a fresh chat and two readings never mix.")}
         </p>
       </details>
     </aside>
@@ -185,10 +186,10 @@ function PickerBody({ currentReadingId, currentProfileId, onClose, onPick }: { c
           </div>
         ) : readings.length === 0 ? (
           <p className="rounded-2xl border border-ink/15 p-5 text-sm text-muted">
-            {profile ? `${profile.name} has no readings yet.` : 'There are no readings yet.'} Make one with New reading, then come back to chat about it.
+            {profile ? t("{name} has no readings yet.", { name: profile.name }) : t("There are no readings yet.")} {t("Make one with New reading, then come back to chat about it.")}
           </p>
         ) : (
-          <div role="radiogroup" aria-label="Readings" className="grid max-h-[min(22rem,48vh)] gap-2 overflow-y-auto p-1">
+          <div role="radiogroup" aria-label={t("Readings")} className="grid max-h-[min(22rem,48vh)] gap-2 overflow-y-auto p-1">
             {readings.map((r) => (
               <ChoiceCard
                 key={r.id}
@@ -196,10 +197,10 @@ function PickerBody({ currentReadingId, currentProfileId, onClose, onPick }: { c
                 value={r.id}
                 checked={r.id === selected}
                 onChange={() => setChoice(r.id)}
-                title={r.name ?? r.headline}
-                note={`${r.name ? `${r.headline} · ` : ''}${formatDate(r.createdAt)}${r.id === readings[0].id ? ' · newest' : ''}${r.id === currentReadingId ? ' · in this chat now' : ''} · ${plural(r.conversationCount, 'chat')}`}
+                title={r.name ?? headlineText(r.headline)}
+                note={`${r.name ? `${headlineText(r.headline)} · ` : ''}${formatDate(r.createdAt)}${r.id === readings[0].id ? t(" · newest") : ''}${r.id === currentReadingId ? t(" · in this chat now") : ''} · ${plural(r.conversationCount, 'chat')}`}
                 extra={
-                  <span className="mt-2 flex items-center gap-4 text-xs" role="img" aria-label={`${r.counts.detected} detected, ${r.counts.uncertain} uncertain, ${r.counts.not_visible} not visible`}>
+                  <span className="mt-2 flex items-center gap-4 text-xs" role="img" aria-label={t("{detected} detected, {uncertain} uncertain, {not_visible} not visible", { detected: r.counts.detected, uncertain: r.counts.uncertain, not_visible: r.counts.not_visible })}>
                     <span className="flex items-center gap-1.5">
                       <StatusDot status="detected" /> {r.counts.detected}
                     </span>
@@ -219,10 +220,10 @@ function PickerBody({ currentReadingId, currentProfileId, onClose, onPick }: { c
 
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} className="btn btn-ghost">
-          Cancel
+          {t("Cancel")}
         </button>
         <button type="button" disabled={!picked} onClick={() => picked && (picked.id === currentReadingId ? onClose() : onPick(picked))} className="btn btn-primary">
-          {picked && picked.id === currentReadingId ? 'Keep this reading' : 'Import this reading'}
+          {picked && picked.id === currentReadingId ? t("Keep this reading") : t("Import this reading")}
         </button>
       </div>
     </>
@@ -231,7 +232,7 @@ function PickerBody({ currentReadingId, currentProfileId, onClose, onPick }: { c
 
 function ReadingPicker({ open, onClose, ...rest }: { open: boolean; onClose: () => void; currentReadingId: string | null; currentProfileId: string | null; onPick: (r: ReadingSummary) => void }) {
   return (
-    <Modal open={open} onClose={onClose} title="Import reading data" lead="Choose the reading this chat should talk about. A chat uses one reading, so a different one starts a fresh chat.">
+    <Modal open={open} onClose={onClose} title={t("Import reading data")} lead={t("Choose the reading this chat should talk about. A chat uses one reading, so a different one starts a fresh chat.")}>
       <PickerBody {...rest} onClose={onClose} />
     </Modal>
   )
@@ -273,14 +274,14 @@ export default function ChatPage() {
     setPicking(false)
     setActiveProfileId(r.profileId)
     setParams({ reading: r.id })
-    const from = `${r.profileName}’s reading from ${formatDate(r.createdAt)}`
-    toast(`Imported ${r.name ? `“${r.name}”, ${from}` : from}. The chat starts fresh.`)
+    const from = t("{profileName}’s reading from {1}", { profileName: r.profileName, "1": formatDate(r.createdAt) })
+    toast(t("Imported {0}. The chat starts fresh.", { "0": r.name ? `“${r.name}”, ${from}` : from }))
   }
 
   const switchTo = (profileId: string) => {
     const target = profiles?.find((p) => p.id === profileId)
     setActiveProfileId(profileId)
-    toast(`Switched to ${target?.name ?? 'that profile'}. Their chat starts fresh.`)
+    toast(t("Switched to {0}. Their chat starts fresh.", { "0": target?.name ?? 'that profile' }))
     navigate('/app/chat')
   }
 
@@ -294,7 +295,7 @@ export default function ChatPage() {
           {profilesError}
         </p>
         <button type="button" onClick={refresh} className="btn btn-ghost btn-sm mt-4">
-          Try again
+          {t("Try again")}
         </button>
       </div>
     )
@@ -302,9 +303,9 @@ export default function ChatPage() {
     body = <Skeleton />
   } else if (profiles.length === 0) {
     body = (
-      <Empty title="Start with a hand profile">
+      <Empty title={t("Start with a hand profile")}>
         <Link to="/app" className="btn btn-primary">
-          Go to the dashboard
+          {t("Go to the dashboard")}
         </Link>
       </Empty>
     )
@@ -315,7 +316,7 @@ export default function ChatPage() {
           {newest.error}
         </p>
         <button type="button" onClick={newest.reload} className="btn btn-ghost btn-sm mt-4">
-          Try again
+          {t("Try again")}
         </button>
       </div>
     )
@@ -324,22 +325,22 @@ export default function ChatPage() {
   } else if (!readingId) {
     const others = profiles.some((p) => p.id !== activeProfile?.id && p.readingCount > 0)
     body = (
-      <Empty title={`No reading to talk about yet${activeProfile ? ` for ${activeProfile.name}` : ''}`}>
+      <Empty title={t("No reading to talk about yet{0}", { "0": activeProfile ? `: ${activeProfile.name}` : '' })}>
         <Link to="/app/new" className="btn btn-primary">
-          <Icon name="plus" size={16} /> New reading
+          <Icon name="plus" size={16} /> {t("New reading")}
         </Link>
         {others && (
           <button type="button" onClick={() => setPicking(true)} className="btn btn-ghost">
-            <Icon name="download" size={16} /> Import another profile’s reading
+            <Icon name="download" size={16} /> {t("Import another profile’s reading")}
           </button>
         )}
       </Empty>
     )
   } else if (reading.error) {
     body = (
-      <Empty title="That reading is not here">
+      <Empty title={t("That reading is not here")}>
         <button type="button" onClick={() => setParams({})} className="btn btn-primary">
-          Use the newest reading
+          {t("Use the newest reading")}
         </button>
       </Empty>
     )
@@ -366,9 +367,9 @@ export default function ChatPage() {
 
   return (
     <div>
-      <p className="kicker">Chat</p>
-      <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-5xl">Talk about a reading</h1>
-      <p className="mt-3 max-w-xl text-muted">Choose a reading to import, then ask about its lines. The chat only knows that one reading.</p>
+      <p className="kicker">{t("Chat")}</p>
+      <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-5xl">{t("Talk about a reading")}</h1>
+      <p className="mt-3 max-w-xl text-muted">{t("Choose a reading to import, then ask about its lines. The chat only knows that one reading.")}</p>
       {body}
       <ReadingPicker open={picking} onClose={() => setPicking(false)} currentReadingId={reading.data?.id ?? null} currentProfileId={reading.data?.profileId ?? activeProfile?.id ?? null} onPick={importReading} />
     </div>

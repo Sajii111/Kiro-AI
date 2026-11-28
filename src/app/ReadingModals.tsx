@@ -12,6 +12,7 @@ import { useResource } from '../lib/useResource'
 import { validateReadingName } from '../lib/validate'
 import { useData } from '../state/data'
 import { forgetPhotos } from '../state/media'
+import { t } from '../i18n'
 
 // Name or rename a reading, and delete a reading or one chat. Deleting says exactly what goes with it before anything is removed.
 
@@ -20,7 +21,7 @@ type ReadingRef = { id: string; label: string }
 /** A reading's name is optional and can be changed any time, so a typo never means doing the photos again. Saving it empty takes the name away. */
 export function RenameReadingModal({ reading, onClose, onRenamed }: { reading: { id: string; name?: string } | null; onClose: () => void; onRenamed?: () => void }) {
   return (
-    <Modal open={!!reading} onClose={onClose} title="Name this reading">
+    <Modal open={!!reading} onClose={onClose} title={t("Name this reading")}>
       {reading && <RenameReadingForm key={reading.id} reading={reading} onClose={onClose} onRenamed={onRenamed} />}
     </Modal>
   )
@@ -42,7 +43,7 @@ function RenameReadingForm({ reading, onClose, onRenamed }: { reading: { id: str
     try {
       const saved = await api.renameReading(reading.id, name)
       refresh()
-      toast(saved.name ? `Named the reading “${saved.name}”.` : 'Took the name off. The reading goes by its date again.')
+      toast(saved.name ? t("Named the reading “{name}”.", { name: saved.name }) : t("Took the name off. The reading goes by its date again."))
       onRenamed?.()
       onClose()
     } catch (err) {
@@ -54,21 +55,21 @@ function RenameReadingForm({ reading, onClose, onRenamed }: { reading: { id: str
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
       <TextField
-        label="Name"
+        label={t("Name")}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="For example: Before my trip"
+        placeholder={t("For example: Before my trip")}
         autoFocus
         autoComplete="off"
         error={error}
-        hint="Leave it empty to go back to the date."
+        hint={t("Leave it empty to go back to the date.")}
       />
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Cancel
+          {t("Cancel")}
         </button>
         <button type="submit" disabled={busy} className="btn btn-primary">
-          {busy && <Spinner />} Save
+          {busy && <Spinner />} {t("Save")}
         </button>
       </div>
     </form>
@@ -77,7 +78,7 @@ function RenameReadingForm({ reading, onClose, onRenamed }: { reading: { id: str
 
 export function DeleteReadingModal({ reading, onClose, onDeleted }: { reading: ReadingRef | null; onClose: () => void; onDeleted?: (gone: DeleteSummary) => void }) {
   return (
-    <Modal open={!!reading} onClose={onClose} title="Delete this reading?">
+    <Modal open={!!reading} onClose={onClose} title={t("Delete this reading?")}>
       {reading && <DeleteReadingForm key={reading.id} reading={reading} onClose={onClose} onDeleted={onDeleted} />}
     </Modal>
   )
@@ -98,7 +99,7 @@ function DeleteReadingForm({ reading, onClose, onDeleted }: { reading: ReadingRe
       const gone = await api.deleteReading(reading.id)
       forgetPhotos(reading.id)
       refresh()
-      toast(`Deleted ${reading.label}: ${plural(gone.conversations, 'chat')} and ${plural(gone.messages, 'message')} removed.`)
+      toast(t("Deleted {label}: {1} and {2} removed.", { label: reading.label, "1": plural(gone.conversations, 'chat'), "2": plural(gone.messages, 'message') }))
       onDeleted?.(gone)
       onClose()
     } catch (err) {
@@ -109,21 +110,21 @@ function DeleteReadingForm({ reading, onClose, onDeleted }: { reading: ReadingRe
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">This permanently removes the reading and everything that belongs to it. It cannot be undone.</p>
+      <p className="text-sm text-muted">{t("This permanently removes the reading and everything that belongs to it. It cannot be undone.")}</p>
       <ul className="space-y-2 rounded-2xl bg-ink/5 p-4 text-sm">
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
-          <span>{reading.label}, with its results and written report</span>
+          <span>{t('{label}, with its results and written report', { label: reading.label })}</span>
         </li>
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
           <span>
-            {chats.data === undefined ? 'Counting…' : `${plural(chats.data.length, 'chat')}`} with {messages === undefined ? 'every message' : `${plural(messages, 'message')}`} in {chats.data?.length === 1 ? 'it' : 'them'}
+            {chats.data === undefined || messages === undefined ? t("Counting…") : t('{chats} with {messages} in them', { chats: plural(chats.data.length, 'chat'), messages: plural(messages, 'message') })}
           </span>
         </li>
         <li className="flex items-center gap-2 text-muted">
           <Icon name="check" size={16} />
-          <span>Photos were never saved, so there is nothing else to remove.</span>
+          <span>{t("Photos were never saved, so there is nothing else to remove.")}</span>
         </li>
       </ul>
       {error && (
@@ -133,10 +134,10 @@ function DeleteReadingForm({ reading, onClose, onDeleted }: { reading: ReadingRe
       )}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Keep it
+          {t("Keep it")}
         </button>
         <button type="button" onClick={remove} disabled={busy || chats.loading} className="btn btn-danger">
-          {busy && <Spinner />} Delete reading
+          {busy && <Spinner />} {t("Delete reading")}
         </button>
       </div>
     </div>
@@ -145,7 +146,7 @@ function DeleteReadingForm({ reading, onClose, onDeleted }: { reading: ReadingRe
 
 export function DeleteChatModal({ chat, onClose, onDeleted }: { chat: Conversation | null; onClose: () => void; onDeleted?: (id: string) => void }) {
   return (
-    <Modal open={!!chat} onClose={onClose} title="Delete this chat?">
+    <Modal open={!!chat} onClose={onClose} title={t("Delete this chat?")}>
       {chat && <DeleteChatForm key={chat.id} chat={chat} onClose={onClose} onDeleted={onDeleted} />}
     </Modal>
   )
@@ -163,7 +164,7 @@ function DeleteChatForm({ chat, onClose, onDeleted }: { chat: Conversation; onCl
     try {
       const gone = await api.deleteConversation(chat.id)
       refresh()
-      toast(`Deleted the chat and its ${plural(gone.messages, 'message')}.`)
+      toast(t("Deleted the chat and its {0}.", { "0": plural(gone.messages, 'message') }))
       onDeleted?.(chat.id)
       onClose()
     } catch (err) {
@@ -175,7 +176,7 @@ function DeleteChatForm({ chat, onClose, onDeleted }: { chat: Conversation; onCl
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted">
-        “{chat.title}” and its {plural(chat.messageCount, 'message')} will be removed. The reading itself stays.
+        {t('“{title}” and its {count} will be removed. The reading itself stays.', { title: chat.title, count: plural(chat.messageCount, 'message') })}
       </p>
       {error && (
         <p role="alert" className="flex items-start gap-2 text-sm text-danger">
@@ -184,10 +185,10 @@ function DeleteChatForm({ chat, onClose, onDeleted }: { chat: Conversation; onCl
       )}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Keep it
+          {t("Keep it")}
         </button>
         <button type="button" onClick={remove} disabled={busy} className="btn btn-danger">
-          {busy && <Spinner />} Delete chat
+          {busy && <Spinner />} {t("Delete chat")}
         </button>
       </div>
     </div>

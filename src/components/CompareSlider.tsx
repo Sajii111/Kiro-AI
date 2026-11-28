@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { t } from '../i18n'
 
 type Props = {
   before: ReactNode
@@ -14,7 +15,7 @@ type Props = {
  * Original-versus-processed slider. Drag the handle (or use the arrow keys) to wipe between two layers.
  * Both layers should fill their box (an <img> or <canvas> with object-cover).
  */
-export default function CompareSlider({ before, after, beforeLabel = 'Original', afterLabel = 'Processed', aspect = '4 / 5', className = '' }: Props) {
+export default function CompareSlider({ before, after, beforeLabel = t("Original"), afterLabel = t("Processed"), aspect = '4 / 5', className = '' }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(50)
   const dragging = useRef(false)
@@ -44,7 +45,7 @@ export default function CompareSlider({ before, after, beforeLabel = 'Original',
       aria-valuemax={100}
       aria-valuenow={Math.round(pos)}
       aria-valuetext={`${Math.round(pos)}% ${beforeLabel}`}
-      data-cursor-label="Drag"
+      data-cursor-label={t("Drag")}
       onKeyDown={onKey}
       onPointerDown={(e) => {
         dragging.current = true

@@ -4,15 +4,16 @@ import { cameraAvailable } from '../../lib/camera'
 import Icon from '../ui/icons'
 import Modal from '../ui/Modal'
 import Spinner from '../ui/Spinner'
+import { t } from '../../i18n'
 
 /** Why the camera could not be used, in words a person can act on. */
 function cameraMessage(e: unknown): string {
   const name = e instanceof DOMException || e instanceof Error ? e.name : ''
-  if (typeof window !== 'undefined' && !window.isSecureContext) return 'The browser only allows the camera on a secure page (https:// or localhost). Upload a photo instead.'
-  if (name === 'NotAllowedError' || name === 'SecurityError') return 'The camera is blocked. Allow it in the address bar of the browser and try again, or upload a photo instead.'
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No camera was found on this device. Upload a photo instead.'
-  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera could not be started. Another app may be using it. Close that app and try again, or upload a photo instead.'
-  return 'The camera could not be opened. Upload a photo instead.'
+  if (typeof window !== 'undefined' && !window.isSecureContext) return t("The browser only allows the camera on a secure page (https:// or localhost). Upload a photo instead.")
+  if (name === 'NotAllowedError' || name === 'SecurityError') return t("The camera is blocked. Allow it in the address bar of the browser and try again, or upload a photo instead.")
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return t("No camera was found on this device. Upload a photo instead.")
+  if (name === 'NotReadableError' || name === 'AbortError') return t("The camera could not be started. Another app may be using it. Close that app and try again, or upload a photo instead.")
+  return t("The camera could not be opened. Upload a photo instead.")
 }
 
 /**
@@ -157,7 +158,7 @@ function CameraView({ side, onCapture, onClose }: { side: HandSide; onCapture: (
         </p>
         <div className="mt-4 flex justify-end">
           <button type="button" className="btn btn-primary" onClick={onClose}>
-            Close
+            {t("Close")}
           </button>
         </div>
       </div>
@@ -167,12 +168,12 @@ function CameraView({ side, onCapture, onClose }: { side: HandSide; onCapture: (
   return (
     <div>
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black">
-        <video ref={video} playsInline muted className={`h-full w-full object-cover ${mirrored ? '[transform:scaleX(-1)]' : ''}`} aria-label="Live camera picture" />
+        <video ref={video} playsInline muted className={`h-full w-full object-cover ${mirrored ? '[transform:scaleX(-1)]' : ''}`} aria-label={t("Live camera picture")} />
         {phase === 'live' && <HandGuide thumbLeft={thumbLeft} />}
         {phase === 'starting' && (
           <div className="absolute inset-0 grid place-items-center text-white">
             <span className="flex items-center gap-2 text-sm">
-              <Spinner size={18} /> Opening the camera…
+              <Spinner size={18} /> {t("Opening the camera…")}
             </span>
           </div>
         )}
@@ -183,22 +184,22 @@ function CameraView({ side, onCapture, onClose }: { side: HandSide; onCapture: (
         )}
       </div>
       <p className="mt-3 text-sm text-muted">
-        Hold your {side} palm flat to the camera inside the outline, fingers together, in even light. Keep the whole hand in the picture.
+        {side === 'left' ? t('Hold your left palm flat to the camera inside the outline, fingers together, in even light. Keep the whole hand in the picture.') : t('Hold your right palm flat to the camera inside the outline, fingers together, in even light. Keep the whole hand in the picture.')}
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button type="button" className="btn btn-primary" onClick={snap} disabled={phase !== 'live' || count !== null}>
-          <Icon name="camera" size={16} /> Take photo
+          <Icon name="camera" size={16} /> {t("Take photo")}
         </button>
         <button type="button" className="btn btn-ghost" onClick={startTimer} disabled={phase !== 'live'}>
-          <Icon name="clock" size={16} /> {count !== null ? 'Cancel timer' : 'Timer: 3 seconds'}
+          <Icon name="clock" size={16} /> {count !== null ? t("Cancel timer") : t("Timer: 3 seconds")}
         </button>
         {cameras > 1 && (
           <button type="button" className="btn btn-ghost" onClick={switchCamera} disabled={phase === 'starting'}>
-            <Icon name="swap" size={16} /> Other camera
+            <Icon name="swap" size={16} /> {t("Other camera")}
           </button>
         )}
         <button type="button" className="btn btn-ghost ml-auto" onClick={onClose}>
-          Cancel
+          {t("Cancel")}
         </button>
       </div>
     </div>
@@ -208,7 +209,7 @@ function CameraView({ side, onCapture, onClose }: { side: HandSide; onCapture: (
 /** The camera in a dialog. `onCapture` gets one JPEG file; the dialog is closed by whoever opened it. Nothing is saved. */
 export default function CameraCapture({ open, side, onClose, onCapture }: { open: boolean; side: HandSide; onClose: () => void; onCapture: (file: File) => void }) {
   return (
-    <Modal open={open} onClose={onClose} title="Take a photo of your palm">
+    <Modal open={open} onClose={onClose} title={t("Take a photo of your palm")}>
       <CameraView side={side} onCapture={onCapture} onClose={onClose} />
     </Modal>
   )

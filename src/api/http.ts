@@ -7,6 +7,7 @@
 import { API_URL } from '../config'
 import { ApiError, isAbort, PROFILE_LOCKED_EVENT, SESSION_LOST_EVENT, type ApiErrorCode, type ApiErrorDetails } from './errors'
 import { readEventStream } from './sse'
+import { lang, t } from '../i18n'
 import type {
   Api,
   AuthApi,
@@ -59,24 +60,24 @@ async function fail(res: Response, path: string): Promise<never> {
   if (body?.error?.photos) details.photos = body.error.photos
   if (body?.error?.lockedUntil) details.lockedUntil = body.error.lockedUntil
   if (body?.error?.profileId) details.profileId = body.error.profileId
-  throw new ApiError(code, body?.error?.message ?? (res.status >= 500 ? 'The server had a problem. Please try again in a moment.' : 'That did not work. Please try again.'), details)
+  throw new ApiError(code, body?.error?.message ?? (res.status >= 500 ? t("The server had a problem. Please try again in a moment.") : t("That did not work. Please try again.")), details)
 }
 
 /** A palm attempt (an unlock or a Palm lab test): a stream of steps, then the result. */
 async function palmAttempt(path: string, form: FormData, onEvent: (event: UnlockEvent) => void, signal?: AbortSignal): Promise<PalmResult> {
   const res = await send('POST', path, form, signal)
   if (!res.ok) await fail(res, path)
-  if (!res.body) throw new ApiError('processing_failed', 'The server did not send any progress. Nothing was decided. Please try again.')
+  if (!res.body) throw new ApiError('processing_failed', t("The server did not send any progress. Nothing was decided. Please try again."))
   let result: PalmResult | null = null
   await readEventStream(res.body, (name, data) => {
     if (name === 'stage') onEvent(data as UnlockEvent)
     else if (name === 'result') result = data as PalmResult
     else if (name === 'error') {
       const e = data as { code?: ApiErrorCode; message?: string }
-      throw new ApiError(e.code ?? 'processing_failed', e.message ?? 'The attempt could not be finished. Please try again.')
+      throw new ApiError(e.code ?? 'processing_failed', e.message ?? t("The attempt could not be finished. Please try again."))
     }
   })
-  if (!result) throw new ApiError('processing_failed', 'The attempt did not finish. Nothing was decided. Please try again.')
+  if (!result) throw new ApiError('processing_failed', t("The attempt did not finish. Nothing was decided. Please try again."))
   return result
 }
 
@@ -92,7 +93,7 @@ async function send(method: string, path: string, body?: unknown, signal?: Abort
     })
   } catch (e) {
     if (isAbort(e)) throw e
-    throw new ApiError('network', 'We could not reach the server. Check your connection and try again.')
+    throw new ApiError('network', t("We could not reach the server. Check your connection and try again."))
   }
 }
 
@@ -161,6 +162,8 @@ export const httpApi: Api = {
 
   async createReading(input, onEvent, signal) {
     const form = new FormData()
+    // the language the reading is written in: the one the website is shown in
+    form.append('language', lang)
     form.set('profileId', input.profileId)
     if (input.name) form.set('name', input.name)
     form.set('left', input.left, 'left.jpg')
@@ -169,17 +172,17 @@ export const httpApi: Api = {
     if (input.rightSample) form.set('rightSample', '1')
     const res = await send('POST', '/readings', form, signal)
     if (!res.ok) await fail(res, '/readings')
-    if (!res.body) throw new ApiError('processing_failed', 'The server did not send any progress. Nothing was saved. Please try again.')
+    if (!res.body) throw new ApiError('processing_failed', t("The server did not send any progress. Nothing was saved. Please try again."))
     let reading: Reading | null = null
     await readEventStream(res.body, (name, data) => {
       if (name === 'stage') onEvent(data as ProcessingEvent)
       else if (name === 'reading') reading = data as Reading
       else if (name === 'error') {
         const e = data as { code?: ApiErrorCode; message?: string }
-        throw new ApiError(e.code ?? 'processing_failed', e.message ?? 'We could not finish the reading. Please try again.')
+        throw new ApiError(e.code ?? 'processing_failed', e.message ?? t("We could not finish the reading. Please try again."))
       }
     })
-    if (!reading) throw new ApiError('processing_failed', 'The reading did not finish. Nothing was saved. Please try again.')
+    if (!reading) throw new ApiError('processing_failed', t("The reading did not finish. Nothing was saved. Please try again."))
     return reading
   },
 
@@ -197,7 +200,8 @@ export const httpApi: Api = {
   },
   createConversation: (readingId) => call<Conversation>('POST', `/readings/${encodeURIComponent(readingId)}/conversations`),
   getConversation: (id) => call<ConversationWithMessages>('GET', `/conversations/${encodeURIComponent(id)}`),
-  sendMessage: (conversationId, text) => call<{ user: Message; assistant: Message }>('POST', `/conversations/${encodeURIComponent(conversationId)}/messages`, { text }),
+  sendMessage: (conversationId, text) =>
+    call<{ user: Message; assistant: Message }>('POST', `/conversations/${encodeURIComponent(conversationId)}/messages`, { text, language: lang }),
   deleteConversation: (id) => call<DeleteSummary>('DELETE', `/conversations/${encodeURIComponent(id)}`),
 
   exportData: () => call<ExportBundle>('GET', '/account/export'),

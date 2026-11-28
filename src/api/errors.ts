@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 // One error type for everything the API layer can say no to, so screens can show a plain message.
 
 export type ApiErrorCode =
@@ -43,10 +44,11 @@ export class ApiError extends Error {
   code: ApiErrorCode
   details: ApiErrorDetails
   constructor(code: ApiErrorCode, message: string, details: ApiErrorDetails = {}) {
-    super(message)
+    // The server writes its sentences in English; the ones the website knows are shown in the chosen language.
+    super(t(message))
     this.name = 'ApiError'
     this.code = code
-    this.details = details
+    this.details = details.photos ? { ...details, photos: details.photos.map((p) => ({ ...p, message: t(p.message) })) } : details
   }
 }
 
@@ -55,7 +57,7 @@ export function isAbort(error: unknown): boolean {
 }
 
 /** The sentence to show a person for any caught error. */
-export function errorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
+export function errorMessage(error: unknown, fallback = t("Something went wrong. Please try again.")): string {
   if (error instanceof ApiError) return error.message
   if (error instanceof Error && error.message) return error.message
   return fallback

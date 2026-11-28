@@ -10,6 +10,7 @@ import type { PreparedPhoto } from '../../lib/photo'
 import { STATUS_LABEL } from '../../lib/status'
 import { FEATURE_ORDER, featureNumber } from '../../lib/features'
 import { STAGE_BY_KEY, STAGE_META, type PreviewMap, type StageMap, type StageStatus } from './stages'
+import { t, tServer } from '../../i18n'
 
 type Props = {
   phase: 'processing' | 'done' | 'failed'
@@ -77,22 +78,22 @@ export default function Processing({ phase, stages, previews, photos, reading, a
 
   const title =
     phase === 'processing'
-      ? 'Reading your palms…'
+      ? t("Reading your palms…")
       : phase === 'done'
         ? reading?.name
-          ? `“${reading.name}” is ready.`
-          : 'Your reading is ready.'
-        : 'That did not work.'
+          ? t("“{name}” is ready.", { name: reading.name })
+          : t("Your reading is ready.")
+        : t("That did not work.")
   const lead =
     phase === 'processing'
-      ? (running?.doing ?? 'Getting started…')
+      ? (running?.doing ?? t("Getting started…"))
       : phase === 'done'
-        ? 'Look through each step, or open the reading.'
-        : 'Nothing was saved, and your photos have been discarded.'
+        ? t("Look through each step, or open the reading.")
+        : t("Nothing was saved, and your photos have been discarded.")
 
   return (
     <div>
-      <p className="kicker">{phase === 'failed' ? 'Something went wrong' : 'Analysing'}</p>
+      <p className="kicker">{phase === 'failed' ? t("Something went wrong") : t("Analysing")}</p>
       <h1 ref={heading} tabIndex={-1} className="mt-3 text-balance font-display text-4xl font-light tracking-tight outline-none md:text-5xl">
         {title}
       </h1>
@@ -104,15 +105,15 @@ export default function Processing({ phase, stages, previews, photos, reading, a
         <div role="alert" className="mt-8 flex flex-wrap items-start gap-4 rounded-3xl border border-danger/40 bg-danger/10 p-6">
           <Icon name="alert" size={22} className="mt-0.5 text-danger" />
           <div className="min-w-0 flex-1 basis-64">
-            <p className="font-medium">{error ?? 'We could not finish the reading.'}</p>
-            <p className="mt-1 text-sm text-muted">Your photos are still only in this tab, so you can try again without choosing them again.</p>
+            <p className="font-medium">{error ?? t("We could not finish the reading.")}</p>
+            <p className="mt-1 text-sm text-muted">{t("Your photos are still only in this tab, so you can try again without choosing them again.")}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={onRetry} className="btn btn-primary">
-              Try again
+              {t("Try again")}
             </button>
             <button type="button" onClick={onReplace} className="btn btn-ghost">
-              Replace photos
+              {t("Replace photos")}
             </button>
           </div>
         </div>
@@ -120,7 +121,7 @@ export default function Processing({ phase, stages, previews, photos, reading, a
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[19rem_minmax(0,1fr)] lg:gap-12">
         {/* ---------------------------------------------------------- the steps */}
-        <ol aria-label="Steps" className="order-2 lg:order-1">
+        <ol aria-label={t("Steps")} className="order-2 lg:order-1">
           {STAGE_META.map((s, i) => {
             const st = stages[s.key]
             const viewable = canView(s.key)
@@ -134,9 +135,9 @@ export default function Processing({ phase, stages, previews, photos, reading, a
                 <span className="min-w-0 flex-1 text-left">
                   <span className={`block font-medium ${st.state === 'waiting' ? 'text-muted' : ''}`}>{s.label}</span>
                   <span className="mt-0.5 block text-sm text-muted">
-                    {st.state === 'running' ? 'Working on it…' : st.state === 'waiting' ? '' : (st.detail ?? '')}
+                    {st.state === 'running' ? t("Working on it…") : st.state === 'waiting' ? '' : tServer(st.detail)}
                   </span>
-                  {viewable && !isShown && <span className="mt-1 block text-xs font-medium text-accent-ink">View this step</span>}
+                  {viewable && !isShown && <span className="mt-1 block text-xs font-medium text-accent-ink">{t("View this step")}</span>}
                 </span>
               </>
             )
@@ -167,7 +168,7 @@ export default function Processing({ phase, stages, previews, photos, reading, a
 
         {/* ---------------------------------------------------------- the picture */}
         <div className="order-1 min-w-0 lg:order-2">
-          <div role="tablist" aria-label="Which hand to look at" className="mb-4 inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
+          <div role="tablist" aria-label={t("Which hand to look at")} className="mb-4 inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
             {(['left', 'right'] as const).map((h) => (
               <button
                 key={h}
@@ -177,7 +178,7 @@ export default function Processing({ phase, stages, previews, photos, reading, a
                 onClick={() => setSide(h)}
                 className={`rounded-full px-5 py-2 transition-colors ${side === h ? 'bg-ink text-paper' : 'text-ink/75 hover:text-ink'}`}
               >
-                {h === 'left' ? 'Left palm' : 'Right palm'}
+                {h === 'left' ? t("Left palm") : t("Right palm")}
               </button>
             ))}
           </div>
@@ -188,14 +189,14 @@ export default function Processing({ phase, stages, previews, photos, reading, a
             ) : shown && STAGE_BY_KEY[shown].image && previews[shown]?.[side] ? (
               <CompareSlider
                 aspect={aspect}
-                beforeLabel="Your photo"
+                beforeLabel={t("Your photo")}
                 afterLabel={STAGE_BY_KEY[shown].label}
-                before={<img src={photo.url} alt={`Your ${side} palm, original`} draggable={false} className="h-full w-full object-cover" />}
-                after={<img src={previews[shown]![side]} alt={`Your ${side} palm after ${STAGE_BY_KEY[shown].label}`} draggable={false} className="h-full w-full object-cover" />}
+                before={<img src={photo.url} alt={t("Your {side} palm, original", { side: side })} draggable={false} className="h-full w-full object-cover" />}
+                after={<img src={previews[shown]![side]} alt={t("Your {side} palm after {label}", { side: side, label: STAGE_BY_KEY[shown].label })} draggable={false} className="h-full w-full object-cover" />}
               />
             ) : (
               <div className={`relative overflow-hidden rounded-2xl border border-ink/10 bg-ink/5 ${phase === 'processing' ? 'scan' : ''}`} style={{ aspectRatio: aspect }}>
-                <img src={photo.url} alt={`Your ${side} palm`} draggable={false} className="h-full w-full object-cover" />
+                <img src={photo.url} alt={t("Your {side} palm", { side: side })} draggable={false} className="h-full w-full object-cover" />
               </div>
             )}
           </div>
@@ -211,14 +212,14 @@ export default function Processing({ phase, stages, previews, photos, reading, a
                   meta.image && (
                     <p className="mt-3 text-xs text-muted">
                       {isMock
-                        ? 'Demo mode: this picture is drawn in your browser from your photo to illustrate the step. The real app does this step on the server.'
-                        : 'Processed on the server and shown here only. It is not stored.'}
+                        ? t("Demo mode: this picture is drawn in your browser from your photo to illustrate the step. The real app does this step on the server.")
+                        : t("Processed on the server and shown here only. It is not stored.")}
                     </p>
                   )
                 )}
               </>
             ) : (
-              <p className="text-muted">The steps appear here as they finish. Drag the handle on a picture to compare it with your photo.</p>
+              <p className="text-muted">{t("The steps appear here as they finish. Drag the handle on a picture to compare it with your photo.")}</p>
             )}
           </div>
         </div>
@@ -229,20 +230,20 @@ export default function Processing({ phase, stages, previews, photos, reading, a
         {phase === 'processing' && (
           <>
             <button type="button" onClick={onCancel} className="btn btn-ghost">
-              Cancel
+              {t("Cancel")}
             </button>
-            <p className="text-sm text-muted">Photos are processed in memory and never saved.</p>
+            <p className="text-sm text-muted">{t("Photos are processed in memory and never saved.")}</p>
           </>
         )}
         {phase === 'done' && (
           <>
             <button type="button" onClick={onOpen} className="btn btn-primary !px-8 !py-4">
-              Open your reading <Icon name="arrow-right" size={17} />
+              {t("Open your reading")}{' '}<Icon name="arrow-right" size={17} />
             </button>
             <button type="button" onClick={onAnother} className="btn btn-ghost">
-              Start another
+              {t("Start another")}
             </button>
-            <p className="text-sm text-muted">Your photos stay in this tab only until you leave or reload. Only the results are kept.</p>
+            <p className="text-sm text-muted">{t("Your photos stay in this tab only until you leave or reload. Only the results are kept.")}</p>
           </>
         )}
       </div>
@@ -262,7 +263,7 @@ function LinesLegend({ reading, side, aligned }: { reading: Reading; side: HandS
               <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ink/10 text-xs font-medium">
                 {featureNumber(id)}
               </span>
-              <span className="font-medium">{f.name}</span>
+              <span className="font-medium">{t(f.name)}</span>
               <StatusDot status={f.status} />
               <span className="text-muted">{STATUS_LABEL[f.status]}</span>
             </li>
@@ -271,7 +272,7 @@ function LinesLegend({ reading, side, aligned }: { reading: Reading; side: HandS
       </ul>
       {!aligned && (
         <p className="mt-3 text-xs text-muted">
-          Sample reading: a stand-in placed these lines (they come from the built-in sample photos, or the server has no hand model), so they are drawn on a sketch of the hand instead of the photo.
+          {t("Sample reading: a stand-in placed these lines (they come from the built-in sample photos, or the server has no hand model), so they are drawn on a sketch of the hand instead of the photo.")}
         </p>
       )}
     </div>

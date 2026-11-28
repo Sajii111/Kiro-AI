@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { BRAND } from '../brand'
+import { t } from '../i18n'
 
 /** A calm placeholder for screens that are still being built. */
 export default function NotBuilt({ title, note }: { title: string; note: string }) {
@@ -10,7 +11,7 @@ export default function NotBuilt({ title, note }: { title: string; note: string 
         <h1 className="mt-4 font-display text-5xl font-light tracking-tight md:text-7xl">{title}</h1>
         <p className="mx-auto mt-5 max-w-md text-muted">{note}</p>
         <Link to="/" className="btn btn-ghost mt-8">
-          ← Back to the landing page
+          {t("← Back to the landing page")}
         </Link>
       </div>
     </main>

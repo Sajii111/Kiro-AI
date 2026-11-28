@@ -1,5 +1,6 @@
 import { useUi } from '../state/ui'
 import Icon from './ui/icons'
+import { t } from '../i18n'
 
 /**
  * The ambient-sound button. "floating" sits in the corner of the landing page (moving bars while it plays);
@@ -10,8 +11,8 @@ import Icon from './ui/icons'
  */
 export default function SoundToggle({ variant = 'floating' }: { variant?: 'floating' | 'inline' }) {
   const { soundOn: on, soundWaiting: waiting, toggleSound } = useUi()
-  const label = on ? 'Mute sound' : 'Play sound'
-  const title = on ? 'Mute sound' : waiting ? 'The music starts with your first click or key press' : 'Play ambient sound'
+  const label = on ? t("Mute sound") : t("Play sound")
+  const title = on ? t("Mute sound") : waiting ? t("The music starts with your first click or key press") : t("Play ambient sound")
   const state = on ? 'playing' : waiting ? 'waiting' : 'off'
 
   if (variant === 'inline') {

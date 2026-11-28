@@ -1,6 +1,7 @@
 import { HAND_STROKES, getStroke, handFrame, sampleSpline } from '../../lib/handGeometry'
 import { pointsToPath } from '../../lib/svgPath'
 import PalmSilhouette from './PalmSilhouette'
+import { t } from '../../i18n'
 
 /**
  * The schematic palm: a soft silhouette, its outline and the finger-joint creases, drawn in a picture of w x h units.
@@ -42,7 +43,7 @@ export function PalmArt({ className = '' }: { className?: string }) {
   const box = { x: Math.min(...xs) - 26, y: Math.min(...ys) - 26, w: Math.max(...xs) - Math.min(...xs) + 52, h: Math.max(...ys) - Math.min(...ys) + 52 }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="A drawing of a palm with its main lines marked as detected, uncertain and not visible" className={className}>
+    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("A drawing of a palm with its main lines marked as detected, uncertain and not visible")} className={className}>
       <PalmBase w={W} h={H} />
       <g fill="none" strokeLinecap="round" strokeLinejoin="round">
         {LINES.map(({ id, status }) => {

@@ -5,6 +5,7 @@ import { FeatureDetail, FeatureTable } from '../../components/palm/FeatureTable'
 import StatusLegend from '../../components/palm/StatusLegend'
 import Switch from '../../components/ui/Switch'
 import { getPhotos } from '../../state/media'
+import { t } from '../../i18n'
 
 // THE annotated analysis. Both hands side by side, each line drawn in a style that says how sure we were,
 // a table of all ten findings, and a detail card for the line that is selected.
@@ -15,8 +16,8 @@ function Quality({ analysis }: { analysis: HandAnalysis }) {
   const q = analysis.quality
   return (
     <p className="mt-2 text-xs text-muted">
-      Photo quality: focus {q.sharpness}, light {q.lighting}, size {q.resolution}
-      {q.palmVisible ? '' : '. The palm was not clearly in view'}.
+      {t('Photo quality: focus {focus}, light {light}, size {size}.', { focus: q.sharpness, light: q.lighting, size: q.resolution })}
+      {q.palmVisible ? '' : ` ${t('The palm was not clearly in view.')}`}
     </p>
   )
 }
@@ -28,12 +29,12 @@ function ShapeAndCreases({ analysis }: { analysis: HandAnalysis }) {
   return (
     <div className="mt-3 space-y-1.5 rounded-2xl bg-ink/5 p-4 text-sm">
       <p>
-        <span className="font-medium">Hand shape.</span> {s.observation}
-        {s.confidence !== null && <span className="text-muted"> Score {Math.round(s.confidence * 100)}%.</span>}
+        <span className="font-medium">{t("Hand shape.")}</span> {s.observation}
+        {s.confidence !== null && <span className="text-muted"> {t("Score")}{' '}{Math.round(s.confidence * 100)}%.</span>}
       </p>
       <p>
-        <span className="font-medium">Other creases.</span>{' '}
-        {n === 0 ? 'None found besides the five lines.' : `${n} found besides the five lines, drawn as thin dotted marks. They have no name, and nothing is said about what they mean.`}
+        <span className="font-medium">{t("Other creases.")}</span>{' '}
+        {n === 0 ? t("None found besides the five lines.") : t("{n} found besides the five lines, drawn as thin dotted marks. They have no name, and nothing is said about what they mean.", { n: n })}
       </p>
     </div>
   )
@@ -57,25 +58,25 @@ export default function LinesSection({ reading, selected, onSelect }: Props) {
   const usePhoto = fits && picture === 'photo'
 
   const note = usePhoto
-    ? 'Your photo is shown from this tab’s memory only. It was never saved, and it disappears when you reload or close the tab.'
+    ? t("Your photo is shown from this tab’s memory only. It was never saved, and it disappears when you reload or close the tab.")
     : photos && !fits && reading.meta.mock
-      ? 'Sample reading: a stand-in placed these lines, and it only fits the built-in sample photos, so they are drawn on a sketch of the hand instead of your photo.'
+      ? t("Sample reading: a stand-in placed these lines, and it only fits the built-in sample photos, so they are drawn on a sketch of the hand instead of your photo.")
       : photos
-        ? 'A sketch of the hand, redrawn from the saved outline.'
-        : 'A sketch of the hand, redrawn from the saved outline. Photos are never stored, so the sketch is what remains.'
+        ? t("A sketch of the hand, redrawn from the saved outline.")
+        : t("A sketch of the hand, redrawn from the saved outline. Photos are never stored, so the sketch is what remains.")
 
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="max-w-xl">
-          <p className="kicker">The lines</p>
-          <h2 className="mt-2 font-display text-2xl font-light tracking-tight sm:text-3xl md:text-4xl">What was found on each hand</h2>
-          <p className="mt-2 text-sm text-muted sm:text-base">Select a numbered mark, on a hand or in the table, to look closer.</p>
+          <p className="kicker">{t("The lines")}</p>
+          <h2 className="mt-2 font-display text-2xl font-light tracking-tight sm:text-3xl md:text-4xl">{t("What was found on each hand")}</h2>
+          <p className="mt-2 text-sm text-muted sm:text-base">{t("Select a numbered mark, on a hand or in the table, to look closer.")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <Switch checked={showLines} onChange={setShowLines} label="Show lines" />
+          <Switch checked={showLines} onChange={setShowLines} label={t("Show lines")} />
           {fits && (
-            <div role="group" aria-label="Picture under the lines" className="inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
+            <div role="group" aria-label={t("Picture under the lines")} className="inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
               {(['photo', 'sketch'] as const).map((p) => (
                 <button
                   key={p}
@@ -84,7 +85,7 @@ export default function LinesSection({ reading, selected, onSelect }: Props) {
                   onClick={() => setPicture(p)}
                   className={`rounded-full px-4 py-1.5 transition-colors ${picture === p ? 'bg-ink text-paper' : 'text-ink/75 hover:text-ink'}`}
                 >
-                  {p === 'photo' ? 'Your photo' : 'Sketch'}
+                  {p === 'photo' ? t("Your photo") : t("Sketch")}
                 </button>
               ))}
             </div>
@@ -96,7 +97,7 @@ export default function LinesSection({ reading, selected, onSelect }: Props) {
         {SIDES.map((side) => (
           <figure key={side}>
             <figcaption className="mb-3">
-              <h3 className="font-display text-2xl font-normal">{side === 'left' ? 'Left palm' : 'Right palm'}</h3>
+              <h3 className="font-display text-2xl font-normal">{side === 'left' ? t("Left palm") : t("Right palm")}</h3>
             </figcaption>
             <AnalysisPanel
               analysis={reading.hands[side]}

@@ -4,6 +4,7 @@ import CompareSlider from '../components/CompareSlider'
 import { drawDemoPalm } from '../lib/demoPalm'
 import { runPipeline, type PipelineStages } from '../lib/stageFilters'
 import { STAGES, type Stage } from './content'
+import { t } from '../i18n'
 
 /**
  * A hands-on version of the processing stage. A sample palm is drawn in the browser and run through the
@@ -50,35 +51,34 @@ export default function ProcessingDemo() {
               {stages ? (
                 <CompareSlider
                   aspect="441 / 560"
-                  beforeLabel="Original"
+                  beforeLabel={t("Original")}
                   afterLabel={stage.label}
                   before={<CanvasView source={stages.original} />}
                   after={<CanvasView source={stages[active]} />}
                 />
               ) : (
                 <div className="w-full animate-pulse rounded-2xl bg-ink/5" style={{ aspectRatio: '441 / 560' }} role="status">
-                  <span className="sr-only">Preparing the sample photo</span>
+                  <span className="sr-only">{t("Preparing the sample photo")}</span>
                 </div>
               )}
               <p className="mt-3 text-xs text-muted">
-                A sample hand drawn in your browser to illustrate each step. The real processing runs in OpenCV on the server, on your own
-                photos.
+                {t("A sample hand drawn in your browser to illustrate each step. The real processing runs in OpenCV on the server, on your own photos.")}
               </p>
             </div>
 
             <div className="flex flex-col justify-center">
-              <p className="reveal kicker">See the steps</p>
+              <p className="reveal kicker">{t("See the steps")}</p>
               <h2
                 id="demo-title"
-                className="split-heading mt-4 font-display text-[clamp(2.2rem,4.6vw,4.2rem)] font-light leading-[1] tracking-tight"
+                className="split-heading mt-4 font-display text-[calc(clamp(2.2rem,4.6vw,4.2rem)*var(--display-scale,1))] font-light leading-[1] tracking-tight"
               >
-                Watch a photo turn into evidence.
+                {t("Watch a photo turn into evidence.")}
               </h2>
               <p className="reveal mt-5 max-w-lg text-base text-muted md:text-lg">
-                Drag the handle across the picture, then pick a step to see what it adds.
+                {t("Drag the handle across the picture, then pick a step to see what it adds.")}
               </p>
 
-              <div role="group" aria-label="Processing step" className="reveal mt-8 flex flex-col gap-2">
+              <div role="group" aria-label={t("Processing step")} className="reveal mt-8 flex flex-col gap-2">
                 {STAGES.map((s, i) => {
                   const on = s.key === active
                   return (

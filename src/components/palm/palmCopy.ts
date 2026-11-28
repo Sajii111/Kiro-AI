@@ -1,6 +1,7 @@
 // Words and colours for the palm lock, in one place so every screen says the same thing the same way.
 
 import type { AttemptKind, PalmOutcome, UnlockEvent, UnlockStageKey } from '../../api/types'
+import { t } from '../../i18n'
 
 /** What each step of a palm attempt has said so far. */
 export type StepState = Partial<Record<UnlockStageKey, UnlockEvent>>
@@ -14,16 +15,16 @@ export function withEvent(steps: StepState, event: UnlockEvent): StepState {
 
 /** The brief's exact outcome labels. */
 export const OUTCOME_TITLE: Record<PalmOutcome, string> = {
-  success: 'Authentication Successful',
-  failed: 'Authentication Failed',
-  invalid_image: 'Invalid Image',
+  success: t("Authentication Successful"),
+  failed: t("Authentication Failed"),
+  invalid_image: t("Invalid Image"),
 }
 
 /** Short labels for tables. */
 export const OUTCOME_SHORT: Record<PalmOutcome, string> = {
-  success: 'Successful',
-  failed: 'Failed',
-  invalid_image: 'Invalid image',
+  success: t("Successful"),
+  failed: t("Failed"),
+  invalid_image: t("Invalid image"),
 }
 
 /** Tailwind classes per outcome. Never colour alone: each outcome also has its own icon and words. */
@@ -34,26 +35,26 @@ export const OUTCOME_TONE: Record<PalmOutcome, { text: string; bg: string; borde
 }
 
 export const KIND_LABEL: Record<AttemptKind, string> = {
-  unlock: 'Unlock',
-  test: 'Palm lab test',
-  lock_added: 'Lock set up',
-  lock_replaced: 'Lock replaced',
-  lock_removed: 'Lock taken off',
-  profile_deleted: 'Profile deleted',
+  unlock: t("Unlock"),
+  test: t("Palm lab test"),
+  lock_added: t("Lock set up"),
+  lock_replaced: t("Lock replaced"),
+  lock_removed: t("Lock taken off"),
+  profile_deleted: t("Profile deleted"),
 }
 
 export const STAGES: { key: UnlockStageKey; title: string; note: string }[] = [
-  { key: 'checks', title: 'Photo checks', note: 'Sharp, well lit, one palm of the right hand, flat to the camera' },
-  { key: 'roi', title: 'Palm square', note: 'The hand is straightened and a square is cut from the middle of the palm' },
-  { key: 'prep', title: 'Preprocessing', note: 'Green channel, a light blur, CLAHE, shading taken out, normalised' },
-  { key: 'features', title: 'Features', note: 'A: the crease map · B: the competitive code (six Gabor filters)' },
-  { key: 'match', title: 'Matching', note: 'Compared with every photo the lock was made from; the best match counts' },
+  { key: 'checks', title: t("Photo checks"), note: t("Sharp, well lit, one palm of the right hand, flat to the camera") },
+  { key: 'roi', title: t("Palm square"), note: t("The hand is straightened and a square is cut from the middle of the palm") },
+  { key: 'prep', title: t("Preprocessing"), note: t("Green channel, a light blur, CLAHE, shading taken out, normalised") },
+  { key: 'features', title: t("Features"), note: t("A: the crease map · B: the competitive code (six Gabor filters)") },
+  { key: 'match', title: t("Matching"), note: t("Compared with every photo the lock was made from; the best match counts") },
 ]
 
 export const METHOD_NAME: Record<string, string> = {
-  crease: 'Crease map',
-  compcode: 'Competitive code',
-  lbp: 'LBP (spare)',
+  crease: t("Crease map"),
+  compcode: t("Competitive code"),
+  lbp: t("LBP (spare)"),
 }
 
 export const fmtScore = (n: number | undefined) => (n === undefined ? '–' : n.toFixed(2))

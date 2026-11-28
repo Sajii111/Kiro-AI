@@ -5,6 +5,7 @@ import { formatDateTime } from '../../lib/format'
 import { featureNumber } from '../../lib/features'
 import { STATUS_LABEL } from '../../lib/status'
 import { DISCLAIMER_LONG } from '../copy'
+import { t, tServer } from '../../i18n'
 
 // The written report. Two kinds of sentence are kept visibly apart on purpose:
 //   what was SEEN in the photo (plain, factual), and what the lines FORETELL (tinted, labelled).
@@ -32,17 +33,17 @@ function SidePair({ observed, traditional, notSeen }: { observed: Record<HandSid
         return (
           <div key={side}>
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
-              {side === 'left' ? 'Left hand' : 'Right hand'}
+              {side === 'left' ? t("Left hand") : t("Right hand")}
               <span className="flex items-center gap-1.5 font-medium normal-case tracking-normal text-ink">
                 <StatusDot status={seen.status} /> {STATUS_LABEL[seen.status]}
               </span>
             </p>
             <p className="mt-2 text-sm leading-relaxed">
-              <span className="sr-only">What was seen: </span>
+              <span className="sr-only">{t('What was seen:')} </span>
               {seen.text}
             </p>
             <div className="mt-3 rounded-2xl border border-accent2/50 bg-accent2/15 p-4">
-              <p className="kicker !text-[0.68rem]">What your line foretells</p>
+              <p className="kicker !text-[0.68rem]">{t("What your line foretells")}</p>
               {tradition ? <p className="mt-1.5 text-sm leading-relaxed">{tradition}</p> : <p className="mt-1.5 text-sm italic text-muted">{notSeen}</p>}
             </div>
           </div>
@@ -62,15 +63,15 @@ function LineCard({ section, selected, onShow }: { section: Section; selected: b
           {section.title}
         </h3>
         <button type="button" onClick={() => onShow(id)} className="btn btn-ghost btn-sm">
-          Show on the hands
+          {t("Show on the hands")}
         </button>
       </header>
 
-      <SidePair observed={section.observed} traditional={section.traditional} notSeen="Not described. This line was not seen clearly enough, so nothing is claimed about it." />
+      <SidePair observed={section.observed} traditional={section.traditional} notSeen={t("Not described. This line was not seen clearly enough, so nothing is claimed about it.")} />
 
       {section.comparison && (
         <div className="mt-5 rounded-2xl bg-ink/5 p-4">
-          <p className="kicker !text-[0.68rem]">Comparing the hands</p>
+          <p className="kicker !text-[0.68rem]">{t("Comparing the hands")}</p>
           <p className="mt-1.5 text-sm leading-relaxed">{section.comparison}</p>
         </div>
       )}
@@ -78,7 +79,7 @@ function LineCard({ section, selected, onShow }: { section: Section; selected: b
   )
 }
 
-const sourceLabel = (src: ThemeSource, names: Record<FeatureId, string>) => (src === 'shape' ? 'Hand shape' : names[src])
+const sourceLabel = (src: ThemeSource, names: Record<FeatureId, string>) => (src === 'shape' ? t("Hand shape") : names[src])
 
 function ThemeCard({ theme, names, onShowLine }: { theme: ThemeSection; names: Record<FeatureId, string>; onShowLine: (id: FeatureId) => void }) {
   const open = (src: ThemeSource) => (src === 'shape' ? scrollToId('report-shape') : onShowLine(src))
@@ -86,19 +87,19 @@ function ThemeCard({ theme, names, onShowLine }: { theme: ThemeSection; names: R
     <article id={`report-theme-${theme.themeId}`} className="card scroll-mt-28 p-5 md:p-7">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-display text-2xl font-normal">{theme.title}</h3>
-        <span className="rounded-full border border-accent2/50 bg-accent2/15 px-3 py-1 text-xs font-medium">What your lines foretell</span>
+        <span className="rounded-full border border-accent2/50 bg-accent2/15 px-3 py-1 text-xs font-medium">{t("What your lines foretell")}</span>
       </header>
 
       <div className="mt-4 rounded-2xl border border-accent2/50 bg-accent2/15 p-4 md:p-5">
         {theme.traditional ? (
           <p className="whitespace-pre-line text-sm leading-relaxed md:text-base">{theme.traditional}</p>
         ) : (
-          <p className="text-sm italic text-muted">Not described. What this theme rests on was not seen clearly enough, so nothing is claimed about it.</p>
+          <p className="text-sm italic text-muted">{t("Not described. What this theme rests on was not seen clearly enough, so nothing is claimed about it.")}</p>
         )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted">Based on</span>
+        <span className="text-xs text-muted">{t("Based on")}</span>
         {theme.basedOn.length > 0 ? (
           theme.basedOn.map((src) => (
             <button
@@ -118,11 +119,11 @@ function ThemeCard({ theme, names, onShowLine }: { theme: ThemeSection; names: R
             </button>
           ))
         ) : (
-          <span className="text-xs text-muted">nothing that was clearly seen</span>
+          <span className="text-xs text-muted">{t("nothing that was clearly seen")}</span>
         )}
       </div>
       {theme.leftOut.length > 0 && !theme.traditional && (
-        <p className="mt-2 text-xs text-muted">Left out, because it was not clearly seen on either hand: {theme.leftOut.map((src) => sourceLabel(src, names).toLowerCase()).join(', ')}.</p>
+        <p className="mt-2 text-xs text-muted">{t('Left out, because it was not clearly seen on either hand: {list}.', { list: theme.leftOut.map((src) => sourceLabel(src, names).toLowerCase()).join(', ') })}</p>
       )}
     </article>
   )
@@ -136,13 +137,13 @@ function ShapeCard({ shape }: { shape: ShapeSection }) {
           <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-paper">
             <Icon name="hand" size={15} />
           </span>
-          Hand shape
+          {t("Hand shape")}
         </h3>
       </header>
-      <SidePair observed={shape.observed} traditional={shape.traditional} notSeen="Not described. The shape of the hand could not be judged, so nothing is claimed about it." />
+      <SidePair observed={shape.observed} traditional={shape.traditional} notSeen={t("Not described. The shape of the hand could not be judged, so nothing is claimed about it.")} />
       {shape.comparison && (
         <div className="mt-5 rounded-2xl bg-ink/5 p-4">
-          <p className="kicker !text-[0.68rem]">Comparing the hands</p>
+          <p className="kicker !text-[0.68rem]">{t("Comparing the hands")}</p>
           <p className="mt-1.5 text-sm leading-relaxed">{shape.comparison}</p>
         </div>
       )}
@@ -166,9 +167,9 @@ function splitSummary(summary: string) {
 
 /** The report writer as a person would say it. */
 function writerName(meta: Reading['meta']) {
-  if (meta.provider === 'gemini') return `Gemini · ${meta.model}`
-  if (meta.provider === 'knowledge-base') return 'The app’s own fixed wording (no AI)'
-  if (meta.mock) return 'Sample stand-in'
+  if (meta.provider === 'gemini') return t("Gemini · {model}", { model: meta.model })
+  if (meta.provider === 'knowledge-base') return t("The app’s own fixed wording (no AI)")
+  if (meta.mock) return t("Sample stand-in")
   return `${meta.provider} · ${meta.model}`
 }
 
@@ -178,20 +179,20 @@ export default function ReportSection({ reading, selected, onShowLine, view, onV
   const { lead, overview } = splitSummary(report.summary)
   return (
     <div>
-      <p className="kicker">The reading</p>
-      <h2 className="mt-2 font-display text-2xl font-light tracking-tight sm:text-3xl md:text-4xl">What your reading says</h2>
+      <p className="kicker">{t("The reading")}</p>
+      <h2 className="mt-2 font-display text-2xl font-light tracking-tight sm:text-3xl md:text-4xl">{t("What your reading says")}</h2>
       <p className="mt-3 max-w-2xl text-sm text-muted sm:text-base">
-        Written {formatDateTime(report.generatedAt)}, only from what was found in your photos above. What the photos show and what your lines foretell are kept apart.
+        {t('Written {when}, only from what was found in your photos above. What the photos show and what your lines foretell are kept apart.', { when: formatDateTime(report.generatedAt) })}
       </p>
 
       <div className="card mt-6 p-6 md:p-8">
-        <p className="kicker">In short</p>
+        <p className="kicker">{t("In short")}</p>
         <p className="mt-3 font-display text-xl font-light leading-snug md:text-2xl">{lead}</p>
         {overview && <p className="mt-4 whitespace-pre-line text-sm leading-relaxed sm:text-base">{overview}</p>}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <div role="group" aria-label="How to read the report" className="inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
+        <div role="group" aria-label={t("How to read the report")} className="inline-flex rounded-full border border-ink/15 bg-surface/70 p-1 text-sm">
           {(['theme', 'line'] as const).map((v) => (
             <button
               key={v}
@@ -200,14 +201,14 @@ export default function ReportSection({ reading, selected, onShowLine, view, onV
               onClick={() => onViewChange(v)}
               className={`rounded-full px-5 py-2 transition-colors ${view === v ? 'bg-ink text-paper' : 'text-ink/75 hover:text-ink'}`}
             >
-              {v === 'theme' ? 'By theme' : 'By line'}
+              {v === 'theme' ? t("By theme") : t("By line")}
             </button>
           ))}
         </div>
         <p className="max-w-xl text-xs text-muted sm:text-sm">
           {view === 'theme'
-            ? 'Each theme is read only from the lines that were clearly seen. It never gives dates, ages or sums of money. It is a story to enjoy, not advice and not a promise.'
-            : 'One card for each line, with both hands side by side.'}
+            ? t("Each theme is read only from the lines that were clearly seen. It never gives dates, ages or sums of money. It is a story to enjoy, not advice and not a promise.")
+            : t("One card for each line, with both hands side by side.")}
         </p>
       </div>
 
@@ -231,7 +232,7 @@ export default function ReportSection({ reading, selected, onShowLine, view, onV
 
       <section id="report-uncertainty" aria-labelledby="unclear-h" className="card mt-5 scroll-mt-28 p-6 md:p-7">
         <h3 id="unclear-h" className="font-display text-2xl font-normal">
-          What was unclear or missing
+          {t("What was unclear or missing")}
         </h3>
         {report.uncertainty.length > 0 ? (
           <ul className="mt-4 space-y-3 text-sm">
@@ -243,65 +244,65 @@ export default function ReportSection({ reading, selected, onShowLine, view, onV
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-muted">Every line and the hand shape were seen clearly on both hands, so nothing is missing.</p>
+          <p className="mt-3 text-sm text-muted">{t("Every line and the hand shape were seen clearly on both hands, so nothing is missing.")}</p>
         )}
       </section>
 
       <details className="card group mt-5 p-6 md:p-7">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-display text-2xl font-normal">
-          How this reading was made
+          {t("How this reading was made")}
           <Icon name="chevron-down" className="transition-transform group-open:rotate-180" />
         </summary>
         <div className="mt-4 space-y-4 text-sm">
           {meta.mock && (
             <p className="rounded-2xl bg-uncertain/15 p-4">
-              <strong className="font-medium">Sample reading.</strong> The lines, the hand shape and the report were made by a stand-in program, not by measuring a palm in a photo, so treat them as an example of how the screens look, not as a result for this hand. Nothing from a sample reading is ever sent to Gemini.
+              <strong className="font-medium">{t("Sample reading.")}</strong> {t("The lines, the hand shape and the report were made by a stand-in program, not by measuring a palm in a photo, so treat them as an example of how the screens look, not as a result for this hand. Nothing from a sample reading is ever sent to Gemini.")}
             </p>
           )}
           {meta.note && (
             <p className="flex items-start gap-3 rounded-2xl bg-ink/5 p-4">
               <Icon name="info" size={16} className="mt-0.5 shrink-0" />
-              <span>{meta.note}</span>
+              <span>{tServer(meta.note)}</span>
             </p>
           )}
           <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">Photo steps</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">{t("Photo steps")}</dt>
               <dd className="mt-1">{meta.pipeline}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">Who wrote the words</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">{t("Who wrote the words")}</dt>
               <dd className="mt-1">{writerName(meta)}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">Palmistry notes</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">{t("Palmistry notes")}</dt>
               <dd className="mt-1">{meta.knowledgeBase}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">Rules given to the writer</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wider text-muted">{t("Rules given to the writer")}</dt>
               <dd className="mt-1">{meta.prompt}</dd>
             </div>
           </dl>
           <ul className="space-y-2 text-muted">
             <li className="flex items-start gap-3">
               <Icon name="check" size={16} className="mt-0.5 shrink-0 text-accent-ink" />
-              Your photos were checked in memory and then thrown away. Only the results, this report and your chats are kept.
+              {t("Your photos were checked in memory and then thrown away. Only the results, this report and your chats are kept.")}
             </li>
             <li className="flex items-start gap-3">
               <Icon name="check" size={16} className="mt-0.5 shrink-0 text-accent-ink" />
               {meta.provider === 'gemini'
-                ? 'Gemini wrote part of this report. It was sent only the results, as words: never your photos, your name or your contact details. The sentences about what the photos show are written by the app, not by Gemini, and every passage Gemini wrote was checked before it was used.'
-                : 'The writer only ever sees the results, never the photos, and must stay within them.'}
+                ? t("Gemini wrote part of this report. It was sent only the results, as words: never your photos, your name or your contact details. The sentences about what the photos show are written by the app, not by Gemini, and every passage Gemini wrote was checked before it was used.")
+                : t("The writer only ever sees the results, never the photos, and must stay within them.")}
             </li>
             {meta.provider === 'gemini' && (
               <li className="flex items-start gap-3">
                 <Icon name="info" size={16} className="mt-0.5 shrink-0 text-accent-ink" />
-                Gemini is run by Google. On Google’s free tier, Google may use what it receives to improve its products, and people may read it, so keep private details out of the chat.
+                {t("Gemini is run by Google. On Google’s free tier, Google may use what it receives to improve its products, and people may read it, so keep private details out of the chat.")}
               </li>
             )}
             <li className="flex items-start gap-3">
               <Icon name="check" size={16} className="mt-0.5 shrink-0 text-accent-ink" />
-              The score on a line shows how clearly it showed up in the photo. It is not the chance that a reading is right.
+              {t("The score on a line shows how clearly it showed up in the photo. It is not the chance that a reading is right.")}
             </li>
           </ul>
         </div>

@@ -9,6 +9,7 @@ import { greeting, plural, relativeDay } from '../lib/format'
 import { useData } from '../state/data'
 import { useSession } from '../state/session'
 import { CreateProfileModal, DeleteProfileModal, RenameProfileModal } from './ProfileModals'
+import { t } from '../i18n'
 
 /** Set once a profile was entered in this tab, so a person who comes back to choose is not sent straight in again. */
 const CHOSE_KEY = 'kiro-chose-profile'
@@ -34,38 +35,38 @@ function ProfileTile({ profile, canLock, opening, onEnter, onRename, onDelete }:
   return (
     <li className="card group relative flex flex-col p-6 transition-[border-color,box-shadow] hover:border-accent">
       {/* the whole tile goes into the profile (a stretched button); the small actions sit above it */}
-      <button type="button" onClick={onEnter} className="flex flex-col items-center gap-4 text-center after:absolute after:inset-0 after:rounded-[inherit] after:content-['']" aria-label={locked ? `Unlock ${profile.name} with the palm` : `Open ${profile.name}`} data-cursor>
+      <button type="button" onClick={onEnter} className="flex flex-col items-center gap-4 text-center after:absolute after:inset-0 after:rounded-[inherit] after:content-['']" aria-label={locked ? t("Unlock {name} with the palm", { name: profile.name }) : t("Open {name}", { name: profile.name })} data-cursor>
         <span className="relative">
           <PlanetAvatar seed={profile.id} size={96} />
           {profile.lock && (
-            <span className={`absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-surface ${locked ? 'bg-ink text-paper' : 'bg-detected text-paper'}`} title={locked ? 'Locked with a palm' : 'Palm lock on, unlocked here'}>
+            <span className={`absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-surface ${locked ? 'bg-ink text-paper' : 'bg-detected text-paper'}`} title={locked ? t("Locked with a palm") : t("Palm lock on, unlocked here")}>
               <Icon name="shield" size={15} />
             </span>
           )}
         </span>
         <span>
           <span className="block font-display text-2xl">{profile.name}</span>
-          <span className="block text-sm text-muted">{profile.owner === 'self' ? 'My hands' : 'Shared with permission'}</span>
+          <span className="block text-sm text-muted">{profile.owner === 'self' ? t("My hands") : t("Shared with permission")}</span>
         </span>
         <span className="text-sm text-muted">
           {locked
-            ? `Locked with the ${profile.lock?.side} palm`
+            ? t("Locked with the {side} palm", { side: profile.lock?.side ?? '' })
             : profile.readingCount === 0
-              ? 'No readings yet'
-              : `${plural(profile.readingCount, 'reading')} · latest ${profile.lastReadingAt ? relativeDay(profile.lastReadingAt) : ''}`}
+              ? t("No readings yet")
+              : t("{0} · latest {1}", { "0": plural(profile.readingCount, 'reading'), "1": profile.lastReadingAt ? relativeDay(profile.lastReadingAt) : '' })}
         </span>
         <span className={`btn btn-sm ${locked ? 'btn-primary' : 'btn-ghost'}`}>
-          {opening ? <Spinner /> : <Icon name={locked ? 'shield' : 'arrow-right'} size={15} />} {locked ? 'Unlock with palm' : 'Open'}
+          {opening ? <Spinner /> : <Icon name={locked ? 'shield' : 'arrow-right'} size={15} />} {locked ? t("Unlock with palm") : t("Open")}
         </span>
       </button>
       <span className="relative z-10 mt-4 flex justify-center gap-1 border-t border-ink/10 pt-3">
         {canLock && !locked && (
-          <Link to={`/app/lock/${profile.id}`} aria-label={profile.lock ? `Replace the palm lock of ${profile.name}` : `Lock ${profile.name} with a palm`} title={profile.lock ? 'Replace the palm lock' : 'Lock with a palm'} className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-ink/5 hover:text-ink">
+          <Link to={`/app/lock/${profile.id}`} aria-label={profile.lock ? t("Replace the palm lock of {name}", { name: profile.name }) : t("Lock {name} with a palm", { name: profile.name })} title={profile.lock ? t("Replace the palm lock") : t("Lock with a palm")} className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-ink/5 hover:text-ink">
             <Icon name="shield" size={16} />
           </Link>
         )}
         {!locked && (
-          <button type="button" onClick={onRename} aria-label={`Rename ${profile.name}`} title="Rename" className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-ink/5 hover:text-ink">
+          <button type="button" onClick={onRename} aria-label={t("Rename {name}", { name: profile.name })} title={t("Rename")} className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-ink/5 hover:text-ink">
             <Icon name="pencil" size={16} />
           </button>
         )}
@@ -116,9 +117,9 @@ export default function ProfilePicker() {
   return (
     <div className="space-y-10">
       <header className="text-center">
-        <p className="kicker justify-center">{session?.kind === 'guest' ? 'Guest session' : name ? `${greeting()}, ${name}` : greeting()}</p>
-        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">Whose palms today?</h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted">Choose a hand profile to go inside it. A locked profile opens with its palm.</p>
+        <p className="kicker justify-center">{session?.kind === 'guest' ? t("Guest session") : name ? `${greeting()}, ${name}` : greeting()}</p>
+        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{t("Whose palms today?")}</h1>
+        <p className="mx-auto mt-3 max-w-xl text-muted">{t("Choose a hand profile to go inside it. A locked profile opens with its palm.")}</p>
       </header>
 
       {profilesError && (
@@ -135,15 +136,15 @@ export default function ProfilePicker() {
         </div>
       ) : profiles.length === 0 ? (
         <div className="card mx-auto flex max-w-2xl flex-col items-center gap-5 p-10 text-center">
-          <h2 className="font-display text-2xl font-normal">Start with a hand profile</h2>
-          <p className="text-muted">A profile is one person&apos;s pair of hands: yours, or someone who has said yes. Each has its own readings and chats, so nothing gets mixed up.</p>
+          <h2 className="font-display text-2xl font-normal">{t("Start with a hand profile")}</h2>
+          <p className="text-muted">{t("A profile is one person’s pair of hands: yours, or someone who has said yes. Each has its own readings and chats, so nothing gets mixed up.")}</p>
           <div className="flex flex-wrap justify-center gap-3">
             <button type="button" onClick={() => setCreating(true)} className="btn btn-primary">
-              <Icon name="plus" size={16} /> Create a profile
+              <Icon name="plus" size={16} /> {t("Create a profile")}
             </button>
             {demo && (
               <button type="button" onClick={loadSamples} disabled={loadingSamples} className="btn btn-ghost">
-                {loadingSamples && <Spinner />} Load sample profiles
+                {loadingSamples && <Spinner />} {t("Load sample profiles")}
               </button>
             )}
           </div>
@@ -158,7 +159,7 @@ export default function ProfilePicker() {
               <span className="grid h-16 w-16 place-items-center rounded-full border border-ink/20">
                 <Icon name="plus" size={26} />
               </span>
-              <span className="font-medium">Add a profile</span>
+              <span className="font-medium">{t("Add a profile")}</span>
             </button>
           </li>
         </ul>

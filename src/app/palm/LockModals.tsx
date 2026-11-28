@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner'
 import TextField from '../../components/ui/TextField'
 import { useToast } from '../../components/ui/Toast'
 import { useData } from '../../state/data'
+import { t } from '../../i18n'
 
 /**
  * Taking a palm lock off. While the profile is open (its palm was shown in this browser) it comes off with one click.
@@ -16,7 +17,7 @@ import { useData } from '../../state/data'
 export function RemoveLockModal({ profile, onClose }: { profile: HandProfile | null; onClose: () => void }) {
   const [busy, setBusy] = useState(false)
   return (
-    <Modal open={!!profile} onClose={onClose} title={profile ? `Take the palm lock off ${profile.name}?` : 'Take the lock off'} locked={busy}>
+    <Modal open={!!profile} onClose={onClose} title={profile ? t("Take the palm lock off {name}?", { name: profile.name }) : t("Take the lock off")} locked={busy}>
       {profile && <RemoveLockForm key={profile.id} profile={profile} onClose={onClose} onBusy={setBusy} />}
     </Modal>
   )
@@ -38,7 +39,7 @@ function RemoveLockForm({ profile, onClose, onBusy }: { profile: HandProfile; on
     try {
       await api.removeLock(profile.id, needsPassword ? password : undefined)
       refresh()
-      toast(`The palm lock is off ${profile.name}. Its template was deleted.`)
+      toast(t("The palm lock is off {name}. Its template was deleted.", { name: profile.name }))
       onBusy(false)
       onClose()
     } catch (err) {
@@ -51,17 +52,17 @@ function RemoveLockForm({ profile, onClose, onBusy }: { profile: HandProfile; on
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
       <p className="text-sm text-muted">
-        Anyone signed in to this account will then reach {profile.name}’s readings and chats without the palm. The encrypted template is deleted. The attempt log keeps its record.
+        {t('Anyone signed in to this account will then reach {name}’s readings and chats without the palm. The encrypted template is deleted. The attempt log keeps its record.', { name: profile.name })}
       </p>
       {needsPassword && (
         <TextField
-          label="Account password"
+          label={t("Account password")}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           autoFocus
-          hint={`${profile.name} is locked, so the password stands in for the palm. This is written to the attempt log.`}
+          hint={t("{name} is locked, so the password stands in for the palm. This is written to the attempt log.", { name: profile.name })}
         />
       )}
       {error && (
@@ -71,10 +72,10 @@ function RemoveLockForm({ profile, onClose, onBusy }: { profile: HandProfile; on
       )}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Keep the lock
+          {t("Keep the lock")}
         </button>
         <button type="submit" disabled={busy || (needsPassword && !password)} className="btn btn-danger">
-          {busy && <Spinner />} Take the lock off
+          {busy && <Spinner />} {t("Take the lock off")}
         </button>
       </div>
     </form>

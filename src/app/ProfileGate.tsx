@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import Spinner from '../components/ui/Spinner'
 import { useData } from '../state/data'
 import ProfilePicker from './ProfilePicker'
+import { t } from '../i18n'
 
 const Dashboard = lazy(() => import('./Dashboard'))
 
@@ -12,7 +13,7 @@ export default function ProfileGate() {
   if (profiles === null) {
     return (
       <p className="flex items-center gap-2 text-muted">
-        <Spinner /> Loading your profiles…
+        <Spinner /> {t("Loading your profiles…")}
       </p>
     )
   }
@@ -26,7 +27,7 @@ export function RequireProfile({ children }: { children: React.ReactNode }) {
   if (profiles === null) {
     return (
       <p className="flex items-center gap-2 text-muted">
-        <Spinner /> Loading…
+        <Spinner /> {t("Loading…")}
       </p>
     )
   }

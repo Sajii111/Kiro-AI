@@ -22,6 +22,8 @@ import { useUi } from '../state/ui'
 import { DISCLAIMER_LONG } from './copy'
 import { RemoveLockModal } from './palm/LockModals'
 import { DeleteProfileModal, RenameProfileModal } from './ProfileModals'
+import { lang, LANGUAGES, setLanguage, t } from '../i18n'
+import { tx } from '../i18n/rich'
 
 // Settings: who you are, how it looks, what happens to your data, and the controls for taking it with you or
 // deleting it. In the sample build there is also a small set of demonstration tools.
@@ -40,26 +42,26 @@ function Section({ id, title, lead, className = '', children }: { id: string; ti
 
 // the three colours shown on each card are that theme's paper, accent and ink (see the tokens in index.css)
 const THEMES = [
-  { id: 'dark', name: 'Night Sky', note: 'Deep, starry and dark (the default)', swatch: ['#080B1C', '#9F8CFF', '#EEF0FF'] },
-  { id: 'light', name: 'Golden Hour', note: 'A warm, bright dawn sky', swatch: ['#FFF4E8', '#FFB287', '#241B3F'] },
+  { id: 'dark', name: t("Night Sky"), note: t("Deep, starry and dark (the default)"), swatch: ['#080B1C', '#9F8CFF', '#EEF0FF'] },
+  { id: 'light', name: t("Golden Hour"), note: t("A warm, bright dawn sky"), swatch: ['#FFF4E8', '#FFB287', '#241B3F'] },
 ] as const
 
 const STORAGE_NOTE: Record<AccountStorage, string> = {
-  firestore: 'Saved in the app’s online database, so your profiles, readings and chats are here every time you sign in.',
-  memory: 'This server keeps accounts only until it restarts, because it has no online database set up.',
-  browser: 'This sample version keeps your account in this browser only.',
+  firestore: t("Saved in the app’s online database, so your profiles, readings and chats are here every time you sign in."),
+  memory: t("This server keeps accounts only until it restarts, because it has no online database set up."),
+  browser: t("This sample version keeps your account in this browser only."),
 }
 
 const PRIVACY: { title: string; text: string }[] = [
-  { title: 'Photos are never stored.', text: 'They are processed in memory and deleted straight after, also when a reading fails.' },
-  { title: 'Only results are kept.', text: 'The lines that were found, the written report and your chats. With an account they are saved in the app’s online database (Google Cloud Firestore) when the server has one set up, so they are there next time. The Account box says where yours are kept.' },
-  { title: 'The writer never sees your photos.', text: 'Gemini, an AI run by Google, writes the report text and the chat answers. It only receives the results as words, plus your chat questions with names, e-mail addresses, phone numbers and links removed. Never a photo, your name or your contact details, and every passage it writes is checked against the results before you see it. If one Gemini model is busy, another of Google’s takes over.' },
-  { title: 'Google may keep what Gemini receives.', text: 'This app uses Gemini’s free tier, where Google may use what it receives to improve its products and people may read it. Keep private details out of the chat. If the server has no Gemini key, the app’s own written notes are used instead and no results leave the server.' },
-  { title: 'The hand finder runs on the server.', text: 'It is Google’s MediaPipe model, running here, not at Google. The library is built to tell Google once that it was used, naming its version and the server’s operating system. No photo goes with that.' },
-  { title: 'One chat belongs to one reading.', text: 'Chats never mix between readings or between profiles.' },
-  { title: 'Someone else’s palms need their yes.', text: 'A profile for another person records that they agreed.' },
-  { title: 'Guest sessions are temporary.', text: 'Everything from one is deleted when it ends, unless you choose to copy it into a new account.' },
-  { title: 'A palm lock keeps no photo.', text: 'Locking a profile keeps an encrypted template: numbers made from the palm’s creases, which cannot be turned back into a picture. It is never sent to Gemini, and taking the lock off deletes it. The attempt log keeps times, outcomes and scores only.' },
+  { title: t("Photos are never stored."), text: t("They are processed in memory and deleted straight after, also when a reading fails.") },
+  { title: t("Only results are kept."), text: t("The lines that were found, the written report and your chats. With an account they are saved in the app’s online database (Google Cloud Firestore) when the server has one set up, so they are there next time. The Account box says where yours are kept.") },
+  { title: t("The writer never sees your photos."), text: t("Gemini, an AI run by Google, writes the report text and the chat answers. It only receives the results as words, plus your chat questions with names, e-mail addresses, phone numbers and links removed. Never a photo, your name or your contact details, and every passage it writes is checked against the results before you see it. If one Gemini model is busy, another of Google’s takes over.") },
+  { title: t("Google may keep what Gemini receives."), text: t("This app uses Gemini’s free tier, where Google may use what it receives to improve its products and people may read it. Keep private details out of the chat. If the server has no Gemini key, the app’s own written notes are used instead and no results leave the server.") },
+  { title: t("The hand finder runs on the server."), text: t("It is Google’s MediaPipe model, running here, not at Google. The library is built to tell Google once that it was used, naming its version and the server’s operating system. No photo goes with that.") },
+  { title: t("One chat belongs to one reading."), text: t("Chats never mix between readings or between profiles.") },
+  { title: t("Someone else’s palms need their yes."), text: t("A profile for another person records that they agreed.") },
+  { title: t("Guest sessions are temporary."), text: t("Everything from one is deleted when it ends, unless you choose to copy it into a new account.") },
+  { title: t("A palm lock keeps no photo."), text: t("Locking a profile keeps an encrypted template: numbers made from the palm’s creases, which cannot be turned back into a picture. It is never sent to Gemini, and taking the lock off deletes it. The attempt log keeps times, outcomes and scores only.") },
 ]
 
 // ------------------------------------------------------------------ delete everything (type a word to confirm)
@@ -67,7 +69,7 @@ const PRIVACY: { title: string; text: string }[] = [
 function DeleteAllModal({ open, onClose, counts }: { open: boolean; onClose: () => void; counts: { profiles: number; readings: number; chats: number; messages: number } | undefined }) {
   const [busy, setBusy] = useState(false)
   return (
-    <Modal open={open} onClose={onClose} title="Delete all my data?" lead="This cannot be undone." locked={busy}>
+    <Modal open={open} onClose={onClose} title={t("Delete all my data?")} lead={t("This cannot be undone.")} locked={busy}>
       <DeleteAllForm onClose={onClose} onBusy={setBusy} counts={counts} />
     </Modal>
   )
@@ -98,7 +100,7 @@ function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBus
       const gone: DataCounts = await api.deleteAllData(needsPassword ? password : undefined)
       forgetAllPhotos()
       refresh()
-      toast(`Deleted everything: ${plural(gone.profiles, 'profile')}, ${plural(gone.readings, 'reading')}, ${plural(gone.conversations, 'chat')} and ${plural(gone.messages, 'message')}.`)
+      toast(t("Deleted everything: {0}, {1}, {2} and {3}.", { "0": plural(gone.profiles, 'profile'), "1": plural(gone.readings, 'reading'), "2": plural(gone.conversations, 'chat'), "3": plural(gone.messages, 'message') }))
       setBusy(false)
       onClose()
       navigate('/app')
@@ -113,19 +115,19 @@ function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBus
       <ul className="space-y-2 rounded-2xl bg-ink/5 p-4 text-sm">
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
-          <span>{counts ? `${plural(counts.profiles, 'profile')} and ${plural(counts.readings, 'reading')}, with their results and reports` : 'Counting…'}</span>
+          <span>{counts ? t("{0} and {1}, with their results and reports", { "0": plural(counts.profiles, 'profile'), "1": plural(counts.readings, 'reading') }) : t("Counting…")}</span>
         </li>
         <li className="flex items-center gap-2">
           <Icon name="trash" size={16} className="text-danger" />
-          <span>{counts ? `${plural(counts.chats, 'chat')} with ${plural(counts.messages, 'message')} in them` : 'Counting…'}</span>
+          <span>{counts ? t("{0} with {1} in them", { "0": plural(counts.chats, 'chat'), "1": plural(counts.messages, 'message') }) : t("Counting…")}</span>
         </li>
         <li className="flex items-center gap-2 text-muted">
           <Icon name="check" size={16} />
-          <span>Your account stays, so you can start again. Photos were never saved.</span>
+          <span>{t("Your account stays, so you can start again. Photos were never saved.")}</span>
         </li>
       </ul>
       <TextField
-        label="Type DELETE to confirm"
+        label={t("Type DELETE to confirm")}
         value={text}
         onChange={(e) => setText(e.target.value)}
         autoComplete="off"
@@ -136,21 +138,21 @@ function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBus
       />
       {needsPassword && (
         <TextField
-          label="Account password"
+          label={t("Account password")}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          hint="Some profiles are locked, and their readings go too, so your password stands in for their palms."
+          hint={t("Some profiles are locked, and their readings go too, so your password stands in for their palms.")}
           error={error}
         />
       )}
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Keep my data
+          {t("Keep my data")}
         </button>
         <button type="submit" disabled={!ready || busy} className="btn btn-danger">
-          {busy && <Spinner />} Delete everything
+          {busy && <Spinner />} {t("Delete everything")}
         </button>
       </div>
     </form>
@@ -161,7 +163,7 @@ function DeleteAllForm({ onClose, onBusy, counts }: { onClose: () => void; onBus
 
 function EndGuestModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Modal open={open} onClose={onClose} title="End this guest session?">
+    <Modal open={open} onClose={onClose} title={t("End this guest session?")}>
       <EndGuestForm onClose={onClose} />
     </Modal>
   )
@@ -184,17 +186,17 @@ function EndGuestForm({ onClose }: { onClose: () => void }) {
     <div className="space-y-5">
       <p className="text-sm text-muted">
         {held.data === undefined
-          ? 'Counting what this session holds…'
+          ? t("Counting what this session holds…")
           : held.data === null
-            ? 'Nothing was made in this session, so nothing is lost.'
-            : `Everything from it is deleted: ${plural(held.data.profiles, 'profile')}, ${plural(held.data.readings, 'reading')} and ${plural(held.data.conversations, 'chat')}.`}
+            ? t("Nothing was made in this session, so nothing is lost.")
+            : t("Everything from it is deleted: {0}, {1} and {2}.", { "0": plural(held.data.profiles, 'profile'), "1": plural(held.data.readings, 'reading'), "2": plural(held.data.conversations, 'chat') })}
       </p>
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={onClose} disabled={busy} className="btn btn-ghost">
-          Keep going
+          {t("Keep going")}
         </button>
         <button type="button" onClick={end} disabled={busy || held.data === undefined} className="btn btn-danger">
-          {busy && <Spinner />} End session
+          {busy && <Spinner />} {t("End session")}
         </button>
       </div>
     </div>
@@ -213,10 +215,17 @@ function ProfileSection({ profile, canLock }: { profile: HandProfile | null; can
   const [removing, setRemoving] = useState<HandProfile | null>(null)
 
   return (
-    <Section id="set-profile" title={profile ? `This profile: ${profile.name}` : 'This profile'} lead="Settings for the hand profile open now. The account’s own settings are below.">
+    <Section id="set-profile" title={profile ? t("This profile: {name}", { name: profile.name }) : t("This profile")} lead={t("Settings for the hand profile open now. The account’s own settings are below.")}>
       {!profile ? (
         <p className="text-sm text-muted">
-          No profile is open. <Link to="/app" className="underline">Choose one on the profiles page</Link> (a locked one opens with its palm).
+          {t("No profile is open.")}{' '}
+          {tx('{link} (a locked one opens with its palm).', {
+            link: (
+              <Link to="/app" className="underline">
+                {t('Choose one on the profiles page')}
+              </Link>
+            ),
+          })}
         </p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
@@ -226,28 +235,30 @@ function ProfileSection({ profile, canLock }: { profile: HandProfile | null; can
               <div className="min-w-0">
                 <p className="truncate font-display text-xl">{profile.name}</p>
                 <p className="text-sm text-muted">
-                  {profile.owner === 'self' ? 'My hands' : 'Shared with permission'} · {plural(profile.readingCount, 'reading')}
+                  {profile.owner === 'self' ? t("My hands") : t("Shared with permission")} · {plural(profile.readingCount, 'reading')}
                 </p>
               </div>
             </div>
-            <p className="break-all font-mono text-xs text-muted">User ID: {profile.id}</p>
+            <p className="break-all font-mono text-xs text-muted">{t("User ID:")}{' '}{profile.id}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => setRenaming(profile)} className="btn btn-ghost btn-sm">
-                <Icon name="pencil" size={14} /> Rename
+                <Icon name="pencil" size={14} /> {t("Rename")}
               </button>
               <button type="button" onClick={() => setDeleting(profile)} className="btn btn-ghost btn-sm">
-                <Icon name="trash" size={14} /> Delete profile
+                <Icon name="trash" size={14} /> {t("Delete profile")}
               </button>
             </div>
           </div>
           <div className="rounded-2xl border border-ink/10 p-5">
             <h3 className="flex items-center gap-2 font-medium">
-              <Icon name="shield" size={16} /> Palm lock
+              <Icon name="shield" size={16} /> {t("Palm lock")}
             </h3>
             {profile.lock ? (
               <>
                 <p className="mt-1 text-sm text-muted">
-                  On, with the {profile.lock.side} palm, since {formatDate(profile.lock.createdAt)} ({plural(profile.lock.samples, 'photo')}). Unlocked in this browser for now.
+                  {profile.lock.side === 'left'
+                    ? t('On, with the left palm, since {date} ({count}). Unlocked in this browser for now.', { date: formatDate(profile.lock.createdAt), count: plural(profile.lock.samples, 'photo') })
+                    : t('On, with the right palm, since {date} ({count}). Unlocked in this browser for now.', { date: formatDate(profile.lock.createdAt), count: plural(profile.lock.samples, 'photo') })}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -259,33 +270,33 @@ function ProfileSection({ profile, canLock }: { profile: HandProfile | null; can
                       navigate('/app')
                     }}
                   >
-                    <Icon name="shield" size={14} /> Lock now
+                    <Icon name="shield" size={14} /> {t("Lock now")}
                   </button>
                   <Link to={`/app/lock/${profile.id}`} className="btn btn-ghost btn-sm">
-                    <Icon name="swap" size={14} /> Replace
+                    <Icon name="swap" size={14} /> {t("Replace")}
                   </Link>
                   <button type="button" onClick={() => setRemoving(profile)} className="btn btn-ghost btn-sm">
-                    <Icon name="x" size={14} /> Take it off
+                    <Icon name="x" size={14} /> {t("Take it off")}
                   </button>
                 </div>
               </>
             ) : canLock ? (
               <>
-                <p className="mt-1 text-sm text-muted">Off. With a lock, this profile’s readings and chats open only after its palm is shown.</p>
+                <p className="mt-1 text-sm text-muted">{t("Off. With a lock, this profile’s readings and chats open only after its palm is shown.")}</p>
                 <Link to={`/app/lock/${profile.id}`} className="btn btn-ghost btn-sm mt-4">
-                  <Icon name="shield" size={14} /> Set up a palm lock
+                  <Icon name="shield" size={14} /> {t("Set up a palm lock")}
                 </Link>
               </>
             ) : (
-              <p className="mt-1 text-sm text-muted">Palm locks are for accounts. Create an account to lock a profile.</p>
+              <p className="mt-1 text-sm text-muted">{t("Palm locks are for accounts. Create an account to lock a profile.")}</p>
             )}
             <p className="mt-4 text-xs text-muted">
               <Link to="/app/security" className="underline">
-                Attempt log
+                {t("Attempt log")}
               </Link>{' '}
               ·{' '}
               <Link to="/app/palm-lab" className="underline">
-                How the palm lock decides
+                {t("How the palm lock decides")}
               </Link>
             </p>
           </div>
@@ -335,7 +346,7 @@ export default function Settings() {
       link.click()
       link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 2000)
-      toast(`Exported ${plural(bundle.profiles.length, 'profile')}, ${plural(bundle.readings.length, 'reading')} and ${plural(bundle.conversations.length, 'chat')}.`)
+      toast(t("Exported {0}, {1} and {2}.", { "0": plural(bundle.profiles.length, 'profile'), "1": plural(bundle.readings.length, 'reading'), "2": plural(bundle.conversations.length, 'chat') }))
     } catch (err) {
       setExportError(errorMessage(err))
     } finally {
@@ -349,7 +360,7 @@ export default function Settings() {
     await demo.loadSamples()
     refresh()
     setBusyDemo(null)
-    toast('Sample profiles added.')
+    toast(t("Sample profiles added."))
   }
 
   const expireGuest = async () => {
@@ -363,15 +374,15 @@ export default function Settings() {
   return (
     <div className="space-y-8">
       <header>
-        <p className="kicker">Settings</p>
-        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">Your account and your data</h1>
-        <p className="mt-3 max-w-2xl text-pretty text-muted">Choose how it looks, see what is kept, and take your data with you or delete it.</p>
+        <p className="kicker">{t("Settings")}</p>
+        <h1 className="mt-3 text-balance font-display text-4xl font-light tracking-tight md:text-6xl">{t("Your account and your data")}</h1>
+        <p className="mt-3 max-w-2xl text-pretty text-muted">{t("Choose how it looks, see what is kept, and take your data with you or delete it.")}</p>
       </header>
 
       <ProfileSection profile={activeProfile} canLock={session?.kind === 'user'} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section id="set-account" title={guest ? 'Guest session' : 'Account'}>
+        <Section id="set-account" title={guest ? t("Guest session") : t("Account")}>
           {session?.kind === 'user' ? (
             <div className="space-y-5">
               <div className="flex items-center gap-4">
@@ -390,30 +401,30 @@ export default function Settings() {
                 }}
                 className="btn btn-ghost btn-sm"
               >
-                <Icon name="logout" size={15} /> Sign out
+                <Icon name="logout" size={15} /> {t("Sign out")}
               </button>
             </div>
           ) : (
             <div className="space-y-5">
               <div className="flex items-center gap-4">
                 <Avatar size={52} />
-                <p className="text-sm text-muted">You are using a guest session. Everything here is temporary and is deleted when it ends.</p>
+                <p className="text-sm text-muted">{t("You are using a guest session. Everything here is temporary and is deleted when it ends.")}</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link to="/signin" state={{ mode: 'signup', from: '/app/settings' }} className="btn btn-primary btn-sm">
-                  Create an account
+                  {t("Create an account")}
                 </Link>
                 <button type="button" onClick={() => setEndingGuest(true)} className="btn btn-ghost btn-sm">
-                  End guest session
+                  {t("End guest session")}
                 </button>
               </div>
             </div>
           )}
         </Section>
 
-        <Section id="set-look" title="Look and sound">
+        <Section id="set-look" title={t("Language, look and sound")}>
           <div className="space-y-5">
-            <div role="radiogroup" aria-label="Colour theme" className="grid grid-cols-2 gap-3">
+            <div role="radiogroup" aria-label={t("Colour theme")} className="grid grid-cols-2 gap-3">
               {THEMES.map((t) => (
                 <ChoiceCard
                   key={t.id}
@@ -435,12 +446,26 @@ export default function Settings() {
                 />
               ))}
             </div>
-            <Switch checked={soundOn} onChange={() => toggleSound()} label="Ambient sound" />
+            <div role="radiogroup" aria-label={t('Language')} className="grid gap-3 sm:grid-cols-3">
+              {LANGUAGES.map((l) => (
+                <ChoiceCard
+                  key={l.code}
+                  name="language"
+                  value={l.code}
+                  checked={lang === l.code}
+                  onChange={() => setLanguage(l.code)}
+                  title={l.native}
+                  note={l.code === 'en' ? t('The language the app was written in') : t('New readings and chat answers are written in it too')}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-muted">{t('Readings made before a change keep the language they were written in. The app’s own back-up wording and the palm lock’s outcome names stay in English.')}</p>
+            <Switch checked={soundOn} onChange={() => toggleSound()} label={t("Ambient sound")} />
           </div>
         </Section>
       </div>
 
-      <Section id="set-privacy" title="What is kept, and what is not" lead="The short version, in plain words.">
+      <Section id="set-privacy" title={t("What is kept, and what is not")} lead={t("The short version, in plain words.")}>
         <ul className="grid gap-x-10 gap-y-5 md:grid-cols-2">
           {PRIVACY.map((item) => (
             <li key={item.title} className="flex items-start gap-3 text-sm">
@@ -454,13 +479,13 @@ export default function Settings() {
         <p className="mt-6 rounded-2xl bg-ink/5 p-4 text-sm">{DISCLAIMER_LONG}</p>
       </Section>
 
-      <Section id="set-data" title="Your data" lead="Take a copy of everything that is kept, or remove it all.">
+      <Section id="set-data" title={t("Your data")} lead={t("Take a copy of everything that is kept, or remove it all.")}>
         <dl className="grid grid-cols-2 gap-4 md:grid-cols-4" aria-busy={!counts}>
           {[
-            ['Profiles', counts?.profiles],
-            ['Readings', counts?.readings],
-            ['Chats', counts?.chats],
-            ['Messages', counts?.messages],
+            [t("Profiles"), counts?.profiles],
+            [t("Readings"), counts?.readings],
+            [t("Chats"), counts?.chats],
+            [t("Messages"), counts?.messages],
           ].map(([label, value]) => (
             <div key={label as string} className="rounded-2xl bg-ink/5 p-4">
               <dt className="text-xs font-semibold uppercase tracking-wider text-muted">{label}</dt>
@@ -471,10 +496,10 @@ export default function Settings() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-ink/10 p-5">
-            <h3 className="font-medium">Export my data</h3>
-            <p className="mt-1 text-sm text-muted">One file (JSON) with your profiles, readings with their results and reports, and chats. It holds no photos, because none are kept.</p>
+            <h3 className="font-medium">{t("Export my data")}</h3>
+            <p className="mt-1 text-sm text-muted">{t("One file (JSON) with your profiles, readings with their results and reports, and chats. It holds no photos, because none are kept.")}</p>
             <button type="button" onClick={exportData} disabled={exporting} className="btn btn-ghost btn-sm mt-4">
-              {exporting ? <Spinner /> : <Icon name="download" size={15} />} Download my data
+              {exporting ? <Spinner /> : <Icon name="download" size={15} />} {t("Download my data")}
             </button>
             {exportError && (
               <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-danger">
@@ -483,10 +508,10 @@ export default function Settings() {
             )}
           </div>
           <div className="rounded-2xl border border-danger/40 p-5">
-            <h3 className="font-medium">Delete all my data</h3>
-            <p className="mt-1 text-sm text-muted">Removes every profile, reading and chat in one go. {guest ? 'Your guest session carries on, empty.' : 'Your account stays, so you can start again.'}</p>
+            <h3 className="font-medium">{t("Delete all my data")}</h3>
+            <p className="mt-1 text-sm text-muted">{t("Removes every profile, reading and chat in one go.")}{' '}{guest ? t("Your guest session carries on, empty.") : t("Your account stays, so you can start again.")}</p>
             <button type="button" onClick={() => setDeleting(true)} className="btn btn-danger btn-sm mt-4">
-              <Icon name="trash" size={15} /> Delete all my data
+              <Icon name="trash" size={15} /> {t("Delete all my data")}
             </button>
           </div>
         </div>
@@ -495,9 +520,9 @@ export default function Settings() {
       {demo && (
         <section aria-labelledby="set-demo" className="rounded-3xl border border-dashed border-ink/30 p-6 md:p-8">
           <h2 id="set-demo" className="font-display text-2xl font-normal">
-            Demo tools
+            {t("Demo tools")}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">This copy uses built-in sample data: there is no server, and your photos are not really read. These tools only exist here, to help show every screen.</p>
+          <p className="mt-2 max-w-2xl text-sm text-muted">{t("This copy uses built-in sample data: there is no server, and your photos are not really read. These tools only exist here, to help show every screen.")}</p>
           <div className="mt-6 space-y-6">
             <div>
               <Switch
@@ -506,17 +531,17 @@ export default function Settings() {
                   demo.setFailNext(next)
                   setFailNext(next)
                 }}
-                label="Make the next reading fail"
+                label={t("Make the next reading fail")}
               />
-              <p className="ml-14 text-xs text-muted">Shows the error screen: the reading stops at a step, nothing is saved and the photos are discarded.</p>
+              <p className="ml-14 text-xs text-muted">{t("Shows the error screen: the reading stops at a step, nothing is saved and the photos are discarded.")}</p>
             </div>
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={loadSamples} disabled={busyDemo !== null} className="btn btn-ghost btn-sm">
-                {busyDemo === 'samples' && <Spinner />} Add sample profiles
+                {busyDemo === 'samples' && <Spinner />} {t("Add sample profiles")}
               </button>
               {guest && (
                 <button type="button" onClick={expireGuest} disabled={busyDemo !== null} className="btn btn-ghost btn-sm">
-                  {busyDemo === 'expire' && <Spinner />} End the guest session now
+                  {busyDemo === 'expire' && <Spinner />} {t("End the guest session now")}
                 </button>
               )}
             </div>

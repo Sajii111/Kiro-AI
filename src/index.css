@@ -400,3 +400,67 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
   .veil-star, .veil-orbit { animation: none; }
   .veil, .veil .veil-mark { transition: none !important; }
 }
+
+/*
+ * Sinhala and Tamil. The Latin fonts have no letters for either script, so the system's own fonts take over:
+ * Nirmala UI on Windows, Noto on Android and most Linux, Sinhala/Tamil Sangam on Apple devices.
+ * Letter spacing pulls the joined letters of both scripts apart, so it is switched off; the letters are taller and
+ * Tamil words are long, so lines get a little more room and long words may wrap.
+ */
+:root:lang(si) {
+  --font-display: "Fraunces Variable", "Nirmala UI", "Noto Serif Sinhala", "Noto Sans Sinhala", "Sinhala Sangam MN", "Iskoola Pota", Georgia, serif;
+  --font-body: "DM Sans Variable", "Nirmala UI", "Noto Sans Sinhala", "Sinhala Sangam MN", "Iskoola Pota", system-ui, sans-serif;
+}
+:root:lang(ta) {
+  --font-display: "Fraunces Variable", "Nirmala UI", "Noto Serif Tamil", "Noto Sans Tamil", "Tamil Sangam MN", "Latha", Georgia, serif;
+  --font-body: "DM Sans Variable", "Nirmala UI", "Noto Sans Tamil", "Tamil Sangam MN", "Latha", system-ui, sans-serif;
+}
+:root:lang(si) *,
+:root:lang(ta) * {
+  letter-spacing: normal !important;
+}
+:root:lang(si) body,
+:root:lang(ta) body {
+  line-height: 1.65;
+}
+:root:lang(si) :is(h1, h2, h3, h4, p, li, dd, dt, label, button, a),
+:root:lang(ta) :is(h1, h2, h3, h4, p, li, dd, dt, label, button, a) {
+  overflow-wrap: break-word;
+}
+/*
+ * The big landing headlines are sized for the Latin display font. Sinhala and Tamil letters are much larger and wider at the
+ * same size (and Tamil words are long), so those headlines are scaled down (the text-[calc(clamp(...)*var(--display-scale))]
+ * classes) and given room for the marks above and below the letters. The system fonts for both scripts have no italic, so
+ * the browser would only slant the letters: they stay upright.
+ */
+:root:lang(si) {
+  --display-scale: 0.76;
+}
+:root:lang(ta) {
+  --display-scale: 0.66;
+}
+:root:lang(si) :is(h1, h2, h3).font-display,
+:root:lang(ta) :is(h1, h2, h3).font-display,
+:root:lang(si) [class*="display-scale"],
+:root:lang(ta) [class*="display-scale"] {
+  line-height: 1.22;
+}
+:root:lang(si) .italic,
+:root:lang(ta) .italic,
+:root:lang(si) em,
+:root:lang(ta) em {
+  font-style: normal;
+}
+/* the small capital-letter labels are tiny for these scripts (and capitals do not exist in them) */
+:root:lang(si) :is(.kicker, .hero-kicker),
+:root:lang(ta) :is(.kicker, .hero-kicker) {
+  font-size: 0.8rem;
+}
+/* Buttons keep to one line in English; Sinhala and Tamil labels can be twice as long, so they may wrap on a phone. */
+:root:lang(si) .btn,
+:root:lang(ta) .btn {
+  white-space: normal;
+  line-height: 1.35;
+  text-align: center;
+  max-width: 100%;
+}

@@ -5,13 +5,14 @@ import type { Conversation, FeatureId, HandProfile, Message, Reading } from '../
 import PlanetAvatar from '../../components/ui/PlanetAvatar'
 import Icon from '../../components/ui/icons'
 import Menu from '../../components/ui/Menu'
-import { formatDate } from '../../lib/format'
+import { formatDate, plural } from '../../lib/format'
 import { useResource } from '../../lib/useResource'
 import { MESSAGE_MAX } from '../../lib/validate'
 import { useData } from '../../state/data'
 import { DISCLAIMER_SHORT } from '../copy'
 import { DeleteChatModal } from '../ReadingModals'
 import MessageView, { Typing, type MessageHandlers } from './ChatMessage'
+import { t } from '../../i18n'
 
 // The chat about ONE reading of ONE profile. It starts empty, creates its conversation when the first question
 // is sent (so opening a reading never leaves empty chats behind), and can be switched to an earlier chat or a new
@@ -31,7 +32,7 @@ export default function ChatPanel({ className = '', openChat = null, ...props }:
   const start = list.data ? (list.data.find((c) => c.id === openChat) ?? list.data[0])?.id ?? null : null
 
   return (
-    <section aria-label="Chat about this reading" className={`flex flex-col overflow-hidden rounded-3xl border border-ink/10 bg-surface shadow-sm ${className}`}>
+    <section aria-label={t("Chat about this reading")} className={`flex flex-col overflow-hidden rounded-3xl border border-ink/10 bg-surface shadow-sm ${className}`}>
       {list.data !== undefined ? (
         <ChatShell key={reading.id} {...props} first={start} conversations={list.data} reload={list.reload} />
       ) : list.error ? (
@@ -41,7 +42,7 @@ export default function ChatPanel({ className = '', openChat = null, ...props }:
               {list.error}
             </p>
             <button type="button" onClick={list.reload} className="btn btn-ghost btn-sm mt-4">
-              Try again
+              {t("Try again")}
             </button>
           </div>
         </div>
@@ -70,15 +71,15 @@ function ChatShell({ reading, profile, first, conversations, reload, onFocusLine
       <header className="flex items-center gap-3 border-b border-ink/10 px-4 py-3">
         <PlanetAvatar seed={profile.id} size={38} />
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base leading-tight">Chat about {profile.name}’s reading</h2>
-          <p className="text-xs leading-snug text-muted">Answers use only this reading</p>
+          <h2 className="font-display text-base leading-tight">{t('Chat about {name}’s reading', { name: profile.name })}</h2>
+          <p className="text-xs leading-snug text-muted">{t("Answers use only this reading")}</p>
         </div>
         <Menu
-          ariaLabel="Chats for this reading"
+          ariaLabel={t("Chats for this reading")}
           panelClassName="!min-w-72"
           button={
             <span className="btn btn-ghost btn-sm">
-              Chats <span className="text-muted">{conversations.length}</span> <Icon name="chevron-down" size={14} />
+              {t("Chats")}{' '}<span className="text-muted">{conversations.length}</span> <Icon name="chevron-down" size={14} />
             </span>
           }
         >
@@ -92,7 +93,7 @@ function ChatShell({ reading, profile, first, conversations, reload, onFocusLine
                 }}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-ink/5"
               >
-                <Icon name="plus" size={16} /> New chat
+                <Icon name="plus" size={16} /> {t("New chat")}
               </button>
               {conversations.length > 0 && (
                 <ul className="mt-1 border-t border-ink/10 pt-1">
@@ -109,12 +110,12 @@ function ChatShell({ reading, profile, first, conversations, reload, onFocusLine
                       >
                         <span className="block truncate">{c.title}</span>
                         <span className="block text-xs text-muted">
-                          {formatDate(c.updatedAt)} · {c.messageCount} messages
+                          {formatDate(c.updatedAt)} · {plural(c.messageCount, 'message')}
                         </span>
                       </button>
                       <button
                         type="button"
-                        aria-label={`Delete chat: ${c.title}`}
+                        aria-label={t("Delete chat: {title}", { title: c.title })}
                         onClick={() => {
                           close()
                           setDeleting(c)
@@ -130,7 +131,7 @@ function ChatShell({ reading, profile, first, conversations, reload, onFocusLine
             </>
           )}
         </Menu>
-        <button type="button" onClick={() => restart(null)} aria-label="Start a new chat" title="New chat" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink/20 hover:border-accent">
+        <button type="button" onClick={() => restart(null)} aria-label={t("Start a new chat")} title={t("New chat")} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink/20 hover:border-accent">
           <Icon name="plus" size={16} />
         </button>
       </header>
@@ -272,16 +273,16 @@ function Thread({ reading, profile, startId, onCreated, onChanged, onFocusLine, 
   }
 
   const suggestions = [
-    'Summarise this reading',
-    'What does the heart line say?',
-    'Compare the two hands',
-    'What was unclear in the photos?',
-    ...(others[0] ? [`What about ${others[0].name}’s heart line?`] : []),
+    t("Summarise this reading"),
+    t("What does the heart line say?"),
+    t("Compare the two hands"),
+    t("What was unclear in the photos?"),
+    ...(others[0] ? [t("What about {name}’s heart line?", { name: others[0].name })] : []),
   ]
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={log} role="log" aria-label="Conversation" aria-live="polite" tabIndex={0} className="focus-own min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus">
+      <div ref={log} role="log" aria-label={t("Conversation")} aria-live="polite" tabIndex={0} className="focus-own min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus">
         {loadingSaved ? (
           <div className="space-y-4" aria-busy="true">
             <div className="ml-auto h-10 w-1/2 animate-pulse rounded-2xl bg-ink/5" />
@@ -294,8 +295,8 @@ function Thread({ reading, profile, startId, onCreated, onChanged, onFocusLine, 
         ) : messages.length === 0 && !pending ? (
           <div className="flex min-h-full flex-col justify-center gap-5 py-4">
             <div>
-              <p className="font-display text-2xl font-light leading-snug">Ask about {profile.name}’s reading.</p>
-              <p className="mt-2 text-sm text-muted">Answers use only what was found in this reading. A line that was not seen is never described, and no other profile’s results are ever used here.</p>
+              <p className="font-display text-2xl font-light leading-snug">{t('Ask about {name}’s reading.', { name: profile.name })}</p>
+              <p className="mt-2 text-sm text-muted">{t("Answers use only what was found in this reading. A line that was not seen is never described, and no other profile’s results are ever used here.")}</p>
             </div>
             <ul className="flex flex-wrap gap-2">
               {suggestions.map((s) => (
@@ -348,7 +349,7 @@ function Thread({ reading, profile, startId, onCreated, onChanged, onFocusLine, 
         )}
         <div className="flex items-end gap-2 rounded-2xl border border-ink/20 bg-paper/60 p-2 transition-[border-color,box-shadow] focus-within:border-focus focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--focus)_28%,transparent)]">
           <label htmlFor={inputId} className="sr-only">
-            Your question
+            {t("Your question")}
           </label>
           <textarea
             id={inputId}
@@ -361,13 +362,13 @@ function Thread({ reading, profile, startId, onCreated, onChanged, onFocusLine, 
               grow()
             }}
             onKeyDown={onKey}
-            placeholder="Ask about a line, or compare the hands"
+            placeholder={t("Ask about a line, or compare the hands")}
             className="focus-own max-h-28 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted"
           />
           <button
             type="submit"
             disabled={!draft.trim() || !!pending}
-            aria-label="Send question"
+            aria-label={t("Send question")}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink text-paper transition-colors hover:bg-accent hover:text-on-accent disabled:pointer-events-none disabled:opacity-40"
           >
             <Icon name="send" size={17} />
@@ -377,7 +378,7 @@ function Thread({ reading, profile, startId, onCreated, onChanged, onFocusLine, 
           <div className="space-y-1">
             <p>{DISCLAIMER_SHORT}</p>
             {!reading.meta.mock && (
-              <p>Answers may be written by Gemini (Google). It gets your question with names and contact details removed, never the photos. Keep private details out.</p>
+              <p>{t("Answers may be written by Gemini (Google). It gets your question with names and contact details removed, never the photos. Keep private details out.")}</p>
             )}
           </div>
           {draft.length > MESSAGE_MAX * 0.8 && (
